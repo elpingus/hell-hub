@@ -130,7 +130,8 @@ local function createKeySystem()
                 getgenv().HellHubAuth = {
                     Token = secretKey,
                     Time = os.time(),
-                    Verified = true
+                    Verified = true,
+                    UserKey = keyInput.Text -- Pass the key user entered
                 }
                 
                 local success, errorMsg = pcall(function()
