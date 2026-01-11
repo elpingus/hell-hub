@@ -38,17 +38,20 @@ end
 local UserEnteredKey = getgenv().HellHubAuth.UserKey
 getgenv().HellHubAuth = nil -- Clear token after verification
 
--- Real-time key validation (checks GitHub every 60 seconds)
+-- Real-time key validation (checks GitHub every 10 seconds)
 local KeyValidationURL = "https://raw.githubusercontent.com/elpingus/hell-hub/refs/heads/main/valid-key.txt"
 task.spawn(function()
-    task.wait(30) -- Wait 30 seconds before first check
-    while task.wait(60) do -- Check every 60 seconds
-        pcall(function()
+    print("[Hell Hub] Key validation started. Your key:", UserEnteredKey)
+    task.wait(5) -- Wait 5 seconds before first check
+    while true do
+        local success, result = pcall(function()
             local currentValidKey = game:HttpGet(KeyValidationURL)
             if currentValidKey then
                 currentValidKey = currentValidKey:gsub("%s+", "") -- Remove whitespace
+                print("[Hell Hub] Current valid key:", currentValidKey, "| Your key:", UserEnteredKey)
                 if currentValidKey ~= "" and currentValidKey ~= UserEnteredKey then
                     -- Key has changed on GitHub, kick user
+                    print("[Hell Hub] KEY MISMATCH! Kicking user...")
                     pcall(function()
                         -- Show warning notification if Library exists
                         if Library and Library.notification then
@@ -59,20 +62,23 @@ task.spawn(function()
                             }
                         end
                     end)
-                    task.wait(3)
+                    task.wait(2)
                     -- Destroy all Hell Hub GUIs
-                    pcall(function()
-                        for _, gui in pairs(game:GetService("CoreGui"):GetChildren()) do
+                    for _, gui in pairs(game:GetService("CoreGui"):GetChildren()) do
+                        pcall(function()
                             if gui.Name:find("Hell") or gui.Name:find("ESP") or gui.Name:find("Crosshair") then
                                 gui:Destroy()
                             end
-                        end
-                    end)
-                    -- Stop this loop
-                    return
+                        end)
+                    end
+                    break -- Stop loop
                 end
             end
         end)
+        if not success then
+            print("[Hell Hub] Validation error:", result)
+        end
+        task.wait(10) -- Check every 10 seconds
     end
 end)
 
