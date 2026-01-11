@@ -3587,13 +3587,13 @@ function Library:label(options)
 end
 
 -- =====================================================
--- ESP PREVIEW COMPONENT
--- Allows users to drag and position ESP elements
+-- ESP PREVIEW COMPONENT v2.0
+-- Drag and SNAP to position ESP elements
 -- =====================================================
 function Library:esp_preview(options)
 	options = self:set_defaults({
 		Name = "ESP Preview",
-		Description = "Drag elements to position them",
+		Description = "Drag elements to snap positions",
 		Elements = {"Name", "Distance", "Health", "Parry"},
 		Callback = function(positions) end,
 		DefaultPositions = {}
@@ -3602,14 +3602,14 @@ function Library:esp_preview(options)
 	-- Create main container
 	local previewContainer = self.container:object("TextButton", {
 		Theme = {BackgroundColor3 = "Secondary"},
-		Size = UDim2.new(1, -20, 0, 280)
+		Size = UDim2.new(1, -20, 0, 320)
 	}):round(7)
 	
 	-- Title
 	local title = previewContainer:object("TextLabel", {
 		BackgroundTransparency = 1,
 		Position = UDim2.fromOffset(10, 5),
-		Size = UDim2.new(1, -20, 0, 22),
+		Size = UDim2.new(1, -80, 0, 22),
 		Text = options.Name,
 		TextSize = 22,
 		Theme = {TextColor3 = "StrongText"},
@@ -3630,77 +3630,218 @@ function Library:esp_preview(options)
 	-- Preview area (dark background)
 	local previewArea = previewContainer:object("Frame", {
 		Position = UDim2.fromOffset(10, 55),
-		Size = UDim2.new(1, -20, 0, 200),
-		BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+		Size = UDim2.new(1, -20, 0, 240),
+		BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 	}):round(5)
 	
-	-- Character silhouette (simple representation)
-	local charSilhouette = previewArea:object("Frame", {
+	-- ========== CHARACTER MODEL ==========
+	local charColor = Color3.fromRGB(70, 75, 85)
+	local charCenter = UDim2.new(0.5, 0, 0.55, 0)
+	
+	-- Head
+	local head = previewArea:object("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(0.5, 0, 0.5, 0),
-		Size = UDim2.fromOffset(50, 100),
-		BackgroundColor3 = Color3.fromRGB(80, 80, 90)
+		Position = UDim2.new(0.5, 0, 0.25, 0),
+		Size = UDim2.fromOffset(35, 35),
+		BackgroundColor3 = charColor
+	}):round(18)
+	
+	-- Body (torso)
+	local body = previewArea:object("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0.35, 0),
+		Size = UDim2.fromOffset(45, 70),
+		BackgroundColor3 = charColor
 	}):round(8)
 	
-	-- Head circle
-	local headCircle = charSilhouette:object("Frame", {
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, -25),
-		Size = UDim2.fromOffset(30, 30),
-		BackgroundColor3 = Color3.fromRGB(80, 80, 90)
-	}):round(15)
+	-- Left Arm
+	local leftArm = previewArea:object("Frame", {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(0.5, -25, 0.35, 0),
+		Size = UDim2.fromOffset(15, 55),
+		BackgroundColor3 = charColor
+	}):round(5)
 	
-	-- ESP elements container (on top of character)
-	local elementsContainer = previewArea:object("Frame", {
-		Size = UDim2.fromScale(1, 1),
-		BackgroundTransparency = 1
-	})
+	-- Right Arm
+	local rightArm = previewArea:object("Frame", {
+		AnchorPoint = Vector2.new(0, 0),
+		Position = UDim2.new(0.5, 25, 0.35, 0),
+		Size = UDim2.fromOffset(15, 55),
+		BackgroundColor3 = charColor
+	}):round(5)
 	
-	-- Store element positions
+	-- Left Leg
+	local leftLeg = previewArea:object("Frame", {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(0.5, -5, 0.67, 0),
+		Size = UDim2.fromOffset(18, 55),
+		BackgroundColor3 = charColor
+	}):round(5)
+	
+	-- Right Leg
+	local rightLeg = previewArea:object("Frame", {
+		AnchorPoint = Vector2.new(0, 0),
+		Position = UDim2.new(0.5, 5, 0.67, 0),
+		Size = UDim2.fromOffset(18, 55),
+		BackgroundColor3 = charColor
+	}):round(5)
+	
+	-- ========== SNAP ZONES ==========
+	-- Define snap positions
+	local snapZones = {
+		{name = "Top", position = UDim2.new(0.5, 0, 0.08, 0), anchor = Vector2.new(0.5, 0.5)},
+		{name = "TopLeft", position = UDim2.new(0.15, 0, 0.15, 0), anchor = Vector2.new(0.5, 0.5)},
+		{name = "TopRight", position = UDim2.new(0.85, 0, 0.15, 0), anchor = Vector2.new(0.5, 0.5)},
+		{name = "Left", position = UDim2.new(0.12, 0, 0.5, 0), anchor = Vector2.new(0.5, 0.5)},
+		{name = "Right", position = UDim2.new(0.88, 0, 0.5, 0), anchor = Vector2.new(0.5, 0.5)},
+		{name = "Bottom", position = UDim2.new(0.5, 0, 0.92, 0), anchor = Vector2.new(0.5, 0.5)},
+		{name = "BottomLeft", position = UDim2.new(0.15, 0, 0.85, 0), anchor = Vector2.new(0.5, 0.5)},
+		{name = "BottomRight", position = UDim2.new(0.85, 0, 0.85, 0), anchor = Vector2.new(0.5, 0.5)},
+	}
+	
+	-- Create visual snap zone indicators
+	local zoneIndicators = {}
+	for _, zone in ipairs(snapZones) do
+		local indicator = previewArea:object("Frame", {
+			AnchorPoint = zone.anchor,
+			Position = zone.position,
+			Size = UDim2.fromOffset(70, 22),
+			BackgroundColor3 = Color3.fromRGB(40, 45, 55),
+			BackgroundTransparency = 0.5
+		}):round(4)
+		
+		indicator:object("TextLabel", {
+			Size = UDim2.fromScale(1, 1),
+			BackgroundTransparency = 1,
+			Text = zone.name,
+			TextSize = 10,
+			TextColor3 = Color3.fromRGB(100, 100, 110),
+			Font = Enum.Font.Gotham
+		})
+		
+		zoneIndicators[zone.name] = {frame = indicator, position = zone.position}
+	end
+	
+	-- Store element positions and states
 	local elementPositions = {}
 	local elementLabels = {}
+	local elementZones = {} -- Which zone each element is in
+	local usedZones = {} -- Track which zones are occupied
 	
-	-- Default positions for each element
-	local defaultOffsets = {
-		Name = UDim2.new(0.5, 0, 0.15, 0),
-		Distance = UDim2.new(0.5, 0, 0.25, 0),
-		Health = UDim2.new(0.5, 0, 0.35, 0),
-		Parry = UDim2.new(0.5, 0, 0.45, 0)
+	-- Default zone assignments
+	local defaultZoneAssignments = {
+		Name = "Top",
+		Distance = "TopLeft",
+		Health = "Left",
+		Parry = "BottomLeft"
 	}
+	
+	-- Find nearest snap zone
+	local function findNearestZone(scaleX, scaleY)
+		local nearest = nil
+		local minDist = math.huge
+		
+		for _, zone in ipairs(snapZones) do
+			local zx = zone.position.X.Scale
+			local zy = zone.position.Y.Scale
+			local dist = math.sqrt((scaleX - zx)^2 + (scaleY - zy)^2)
+			
+			if dist < minDist and dist < 0.2 then -- Snap threshold
+				-- Check if zone is not already used
+				if not usedZones[zone.name] then
+					minDist = dist
+					nearest = zone
+				end
+			end
+		end
+		
+		return nearest
+	end
+	
+	-- Highlight zone on hover
+	local function highlightZone(zoneName, highlight)
+		if zoneIndicators[zoneName] then
+			local frame = zoneIndicators[zoneName].frame
+			if highlight then
+				frame:tween{BackgroundColor3 = Color3.fromRGB(80, 100, 130), BackgroundTransparency = 0}
+			else
+				frame:tween{BackgroundColor3 = Color3.fromRGB(40, 45, 55), BackgroundTransparency = 0.5}
+			end
+		end
+	end
 	
 	-- Create draggable ESP elements
 	for i, elementName in ipairs(options.Elements) do
-		local startPos = options.DefaultPositions[elementName] or defaultOffsets[elementName] or UDim2.new(0.5, 0, 0.1 + (i * 0.1), 0)
+		local defaultZone = defaultZoneAssignments[elementName] or snapZones[i].name
+		local startPos = zoneIndicators[defaultZone] and zoneIndicators[defaultZone].position or UDim2.new(0.5, 0, 0.1 + (i * 0.1), 0)
 		
-		local element = elementsContainer:object("TextButton", {
+		local element = previewArea:object("TextButton", {
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = startPos,
-			Size = UDim2.fromOffset(80, 20),
-			BackgroundColor3 = Color3.fromRGB(45, 45, 55),
+			Size = UDim2.fromOffset(75, 20),
+			BackgroundColor3 = Color3.fromRGB(50, 55, 70),
 			Text = elementName,
-			TextSize = 14,
+			TextSize = 13,
 			TextColor3 = Color3.fromRGB(255, 255, 255),
-			Font = Enum.Font.GothamBold
-		}):round(4):stroke(Color3.fromRGB(100, 100, 120), 1)
+			Font = Enum.Font.GothamBold,
+			ZIndex = 10
+		}):round(4):stroke(Color3.fromRGB(100, 120, 150), 1)
 		
 		elementLabels[elementName] = element
-		elementPositions[elementName] = startPos
+		elementPositions[elementName] = {zone = defaultZone, position = startPos}
+		elementZones[elementName] = defaultZone
+		usedZones[defaultZone] = elementName
 		
-		-- Make draggable
+		-- Make draggable with snap
 		local dragging = false
 		local dragStart, startOffset
+		local currentHighlight = nil
 		
 		element.MouseButton1Down:Connect(function()
 			dragging = true
 			dragStart = UserInputService:GetMouseLocation()
 			startOffset = element.Position
+			
+			-- Free up current zone
+			local currentZone = elementZones[elementName]
+			if currentZone then
+				usedZones[currentZone] = nil
+			end
+			
+			element.ZIndex = 20
 		end)
 		
 		UserInputService.InputEnded:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			if input.UserInputType == Enum.UserInputType.MouseButton1 and dragging then
 				dragging = false
-				-- Save position
-				elementPositions[elementName] = element.Position
+				element.ZIndex = 10
+				
+				-- Clear highlight
+				if currentHighlight then
+					highlightZone(currentHighlight, false)
+				end
+				
+				-- Snap to nearest zone
+				local pos = element.Position
+				local nearestZone = findNearestZone(pos.X.Scale, pos.Y.Scale)
+				
+				if nearestZone then
+					element:tween{Position = nearestZone.position}
+					elementZones[elementName] = nearestZone.name
+					usedZones[nearestZone.name] = elementName
+					elementPositions[elementName] = {zone = nearestZone.name, position = nearestZone.position}
+				else
+					-- Return to original position if no valid zone
+					local originalZone = defaultZoneAssignments[elementName] or "Top"
+					if not usedZones[originalZone] then
+						local originalPos = zoneIndicators[originalZone].position
+						element:tween{Position = originalPos}
+						elementZones[elementName] = originalZone
+						usedZones[originalZone] = elementName
+						elementPositions[elementName] = {zone = originalZone, position = originalPos}
+					end
+				end
+				
 				options.Callback(elementPositions)
 			end
 		end)
@@ -3711,21 +3852,37 @@ function Library:esp_preview(options)
 				local delta = mousePos - dragStart
 				
 				local areaSize = previewArea.AbsoluteSize
-				local newX = math.clamp(startOffset.X.Scale + (delta.X / areaSize.X), 0, 1)
-				local newY = math.clamp(startOffset.Y.Scale + (delta.Y / areaSize.Y), 0, 1)
+				local newX = math.clamp(startOffset.X.Scale + (delta.X / areaSize.X), 0.05, 0.95)
+				local newY = math.clamp(startOffset.Y.Scale + (delta.Y / areaSize.Y), 0.05, 0.95)
 				
 				element.Position = UDim2.new(newX, 0, newY, 0)
+				
+				-- Highlight nearest valid zone
+				local nearestZone = findNearestZone(newX, newY)
+				
+				if currentHighlight and (not nearestZone or nearestZone.name ~= currentHighlight) then
+					highlightZone(currentHighlight, false)
+				end
+				
+				if nearestZone then
+					highlightZone(nearestZone.name, true)
+					currentHighlight = nearestZone.name
+				else
+					currentHighlight = nil
+				end
 			end
 		end)
 		
 		-- Hover effect
 		element.MouseEnter:Connect(function()
-			element:tween{BackgroundColor3 = Color3.fromRGB(60, 60, 75)}
+			if not dragging then
+				element:tween{BackgroundColor3 = Color3.fromRGB(70, 75, 95)}
+			end
 		end)
 		
 		element.MouseLeave:Connect(function()
 			if not dragging then
-				element:tween{BackgroundColor3 = Color3.fromRGB(45, 45, 55)}
+				element:tween{BackgroundColor3 = Color3.fromRGB(50, 55, 70)}
 			end
 		end)
 	end
@@ -3734,29 +3891,35 @@ function Library:esp_preview(options)
 	local resetBtn = previewContainer:object("TextButton", {
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, -10, 0, 8),
-		Size = UDim2.fromOffset(60, 20),
-		BackgroundColor3 = Color3.fromRGB(60, 60, 70),
+		Size = UDim2.fromOffset(60, 22),
+		BackgroundColor3 = Color3.fromRGB(60, 65, 75),
 		Text = "Reset",
 		TextSize = 12,
-		TextColor3 = Color3.fromRGB(200, 200, 200),
-		Font = Enum.Font.Gotham
-	}):round(4)
+		TextColor3 = Color3.fromRGB(200, 200, 210),
+		Font = Enum.Font.GothamBold
+	}):round(5)
 	
 	resetBtn.MouseButton1Click:Connect(function()
+		-- Clear all zones
+		usedZones = {}
+		
 		for elementName, element in pairs(elementLabels) do
-			local defaultPos = defaultOffsets[elementName] or UDim2.new(0.5, 0, 0.3, 0)
+			local defaultZone = defaultZoneAssignments[elementName] or "Top"
+			local defaultPos = zoneIndicators[defaultZone] and zoneIndicators[defaultZone].position or UDim2.new(0.5, 0, 0.3, 0)
+			
 			element:tween{Position = defaultPos}
-			elementPositions[elementName] = defaultPos
+			elementZones[elementName] = defaultZone
+			usedZones[defaultZone] = elementName
+			elementPositions[elementName] = {zone = defaultZone, position = defaultPos}
 		end
 		options.Callback(elementPositions)
 	end)
 	
-	-- Hover effects for reset button
 	resetBtn.MouseEnter:Connect(function()
-		resetBtn:tween{BackgroundColor3 = Color3.fromRGB(80, 80, 95)}
+		resetBtn:tween{BackgroundColor3 = Color3.fromRGB(80, 85, 100)}
 	end)
 	resetBtn.MouseLeave:Connect(function()
-		resetBtn:tween{BackgroundColor3 = Color3.fromRGB(60, 60, 70)}
+		resetBtn:tween{BackgroundColor3 = Color3.fromRGB(60, 65, 75)}
 	end)
 	
 	self:_resize_tab()
@@ -3767,9 +3930,19 @@ function Library:esp_preview(options)
 		return elementPositions
 	end
 	
+	function methods:GetZones()
+		return elementZones
+	end
+	
 	function methods:SetElementVisible(name, visible)
 		if elementLabels[name] then
 			elementLabels[name].Visible = visible
+			-- Free zone if hidden
+			if not visible and elementZones[name] then
+				usedZones[elementZones[name]] = nil
+			elseif visible and elementZones[name] then
+				usedZones[elementZones[name]] = name
+			end
 		end
 	end
 	
