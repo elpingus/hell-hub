@@ -7,25 +7,15 @@
 -- SCRIPT PROTECTION - Only runs when loaded through key system
 local function verifyAuth()
     if not getgenv or not getgenv().HellHubAuth then
+        print("[Hell Hub] No auth found")
         return false
     end
     local auth = getgenv().HellHubAuth
-    if not auth.Verified or not auth.Token or not auth.Time then
+    if not auth.Verified then
+        print("[Hell Hub] Not verified")
         return false
     end
-    -- Check if token matches time-based format
-    local currentTimeToken = tostring(math.floor(os.time() / 60))
-    local expectedToken = "HELLHUB_" .. currentTimeToken .. "_VERIFIED"
-    -- Allow 2 minute window (current minute + previous minute)
-    local prevTimeToken = tostring(math.floor(os.time() / 60) - 1)
-    local prevExpectedToken = "HELLHUB_" .. prevTimeToken .. "_VERIFIED"
-    if auth.Token ~= expectedToken and auth.Token ~= prevExpectedToken then
-        return false
-    end
-    -- Check if loaded within last 5 minutes
-    if os.time() - auth.Time > 300 then
-        return false
-    end
+    print("[Hell Hub] Auth OK! UserKey:", auth.UserKey)
     return true
 end
 
