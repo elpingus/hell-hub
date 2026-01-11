@@ -1487,11 +1487,8 @@ function Library:textbox(options)
 
 	inputBox.FocusLost:Connect(function(enterPressed)
 		options.Callback(inputBox.Text)
-	end)
-
-	inputBox.Changed:Connect(function(prop)
-		if prop == "Text" then
-			options.Callback(inputBox.Text)
+		if enterPressed and options.EnterCallback then
+			options.EnterCallback(inputBox.Text)
 		end
 	end)
 
