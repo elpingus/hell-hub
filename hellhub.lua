@@ -1443,7 +1443,9 @@ function Library:textbox(options)
 		Default = "",
 		Placeholder = "Enter text...",
 		Description = nil,
-		Callback = function(text) end
+		ShowSaveButton = false,
+		Callback = function(text) end,
+		SaveCallback = function(text) end
 	}, options)
 
 	local textboxContainer = self.container:object("Frame", {
@@ -1454,7 +1456,7 @@ function Library:textbox(options)
 	local text = textboxContainer:object("TextLabel", {
 		BackgroundTransparency = 1,
 		Position = UDim2.fromOffset(10, (options.Description and 5) or 0),
-		Size = (options.Description and UDim2.new(0.4, -10, 0, 22)) or UDim2.new(0.4, -10, 1, 0),
+		Size = (options.Description and UDim2.new(0.35, -10, 0, 22)) or UDim2.new(0.35, -10, 1, 0),
 		Text = options.Name,
 		TextSize = 22,
 		Theme = {TextColor3 = "StrongText"},
@@ -1465,7 +1467,7 @@ function Library:textbox(options)
 		local description = textboxContainer:object("TextLabel", {
 			BackgroundTransparency = 1,
 			Position = UDim2.fromOffset(10, 27),
-			Size = UDim2.new(0.4, -10, 0, 20),
+			Size = UDim2.new(0.35, -10, 0, 20),
 			Text = options.Description,
 			TextSize = 18,
 			Theme = {TextColor3 = "WeakText"},
@@ -1475,8 +1477,8 @@ function Library:textbox(options)
 
 	local inputBox = textboxContainer:object("TextBox", {
 		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -10, 0.5, 0),
-		Size = UDim2.new(0.55, -10, 0, 30),
+		Position = options.ShowSaveButton and UDim2.new(1, -60, 0.5, 0) or UDim2.new(1, -10, 0.5, 0),
+		Size = options.ShowSaveButton and UDim2.new(0.45, -10, 0, 30) or UDim2.new(0.55, -10, 0, 30),
 		Theme = {BackgroundColor3 = "Main", TextColor3 = "StrongText"},
 		PlaceholderText = options.Placeholder,
 		PlaceholderColor3 = Color3.fromRGB(150, 150, 150),
@@ -1485,10 +1487,28 @@ function Library:textbox(options)
 		ClearTextOnFocus = false
 	}):round(5)
 
+	local saveBtn = nil
+	if options.ShowSaveButton then
+		saveBtn = textboxContainer:object("TextButton", {
+			AnchorPoint = Vector2.new(1, 0.5),
+			Position = UDim2.new(1, -10, 0.5, 0),
+			Size = UDim2.new(0, 45, 0, 30),
+			Theme = {BackgroundColor3 = "Tertiary"},
+			Text = "Save",
+			TextSize = 14,
+			TextColor3 = Color3.fromRGB(255, 255, 255)
+		}):round(5)
+
+		saveBtn.MouseButton1Click:Connect(function()
+			options.Callback(inputBox.Text)
+			options.SaveCallback(inputBox.Text)
+		end)
+	end
+
 	inputBox.FocusLost:Connect(function(enterPressed)
 		options.Callback(inputBox.Text)
-		if enterPressed and options.EnterCallback then
-			options.EnterCallback(inputBox.Text)
+		if enterPressed and options.SaveCallback then
+			options.SaveCallback(inputBox.Text)
 		end
 	end)
 
