@@ -30,10 +30,11 @@ getgenv().HellHubAuth = nil -- Clear token after verification
 
 -- Real-time key validation (checks GitHub every 10 seconds)
 local KeyValidationURL = "https://raw.githubusercontent.com/elpingus/hell-hub/refs/heads/main/valid-key.txt"
+local keyCheckRunning = true
 task.spawn(function()
     print("[Hell Hub] Key validation started. Your key:", UserEnteredKey)
     task.wait(5) -- Wait 5 seconds before first check
-    while true do
+    while keyCheckRunning do
         local success, result = pcall(function()
             local currentValidKey = game:HttpGet(KeyValidationURL)
             if currentValidKey then
@@ -42,6 +43,7 @@ task.spawn(function()
                 if currentValidKey ~= "" and currentValidKey ~= UserEnteredKey then
                     -- Key has changed on GitHub, kick user
                     print("[Hell Hub] KEY MISMATCH! Kicking user...")
+                    keyCheckRunning = false
                     pcall(function()
                         -- Show warning notification if Library exists
                         if Library and Library.notification then
@@ -61,14 +63,15 @@ task.spawn(function()
                             end
                         end)
                     end
-                    break -- Stop loop
                 end
             end
         end)
         if not success then
             print("[Hell Hub] Validation error:", result)
         end
-        task.wait(10) -- Check every 10 seconds
+        if keyCheckRunning then
+            task.wait(10) -- Check every 10 seconds
+        end
     end
 end)
 
