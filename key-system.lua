@@ -4,7 +4,6 @@
 ]]
 
 -- Key System Configuration
-local KeySystemURL = "https://raw.githubusercontent.com/elpingus/hell-hub/refs/heads/main/key-system.lua"
 local MainScriptURL = "https://raw.githubusercontent.com/elpingus/hell-hub/refs/heads/main/combat-warriors.lua"
 local GetKeyURL = "https://work.ink/2dxZ/hell-hub-key"
 local ValidKey = "testcw"
@@ -116,14 +115,28 @@ local function createKeySystem()
     
     checkKeyBtn.MouseButton1Click:Connect(function()
         if keyInput.Text == ValidKey then
-            statusLabel.Text = "Key valid! Loading script..."
+            statusLabel.Text = "Key valid! Loading..."
             statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-            task.wait(0.5)
-            keyGui:Destroy()
+            checkKeyBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+            checkKeyBtn.Text = "Loading..."
             
-            -- Load main Combat Warriors script
-            pcall(function()
-                loadstring(game:HttpGet(MainScriptURL))()
+            task.spawn(function()
+                task.wait(0.3)
+                keyGui:Destroy()
+                
+                local success, errorMsg = pcall(function()
+                    local scriptContent = game:HttpGet(MainScriptURL)
+                    if scriptContent and #scriptContent > 100 then
+                        local loadedFunc = loadstring(scriptContent)
+                        if loadedFunc then
+                            loadedFunc()
+                        end
+                    end
+                end)
+                
+                if not success then
+                    warn("[Hell Hub] Failed to load: " .. tostring(errorMsg))
+                end
             end)
         else
             statusLabel.Text = "Invalid key! Try again."
