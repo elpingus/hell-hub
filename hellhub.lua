@@ -3961,307 +3961,333 @@ end
 -- =====================================================
 function Library:esp_window(options)
 	options = self:set_defaults({
-		Title = "ESP Preview - Combat Warriors",
+		Title = "Interactive ESP Preview",
 		Position = UDim2.new(0, 600, 0.5, -200),
 		OnPositionChange = function(positions) end,
 		OnElementToggle = function(name, enabled) end,
-		OnElementUpdate = function(name, settings) end, -- New callback for customization
-		Elements = {} 
+		Elements = {
+			{name = "Name", category = "Main", color = Color3.fromRGB(255, 255, 255), enabled = true, side = "top"},
+			{name = "Health Bar", category = "Main", color = Color3.fromRGB(100, 255, 100), enabled = true, side = "left"},
+			{name = "Distance", category = "Main", color = Color3.fromRGB(200, 200, 200), enabled = true, side = "left"},
+			{name = "Weapon", category = "Item", color = Color3.fromRGB(255, 200, 100), enabled = true, side = "bottom"},
+			{name = "Parry Count", category = "Combat", color = Color3.fromRGB(255, 100, 100), enabled = false, side = "right"},
+		}
 	}, options)
 	
-	-- Create ScreenGui
+	-- Create ScreenGui for floating window
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "ESPPreviewWindow"
 	gui.ResetOnSpawn = false
+	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	gui.Parent = game:GetService("CoreGui")
 	
-	-- WINDOW FRAME
+	-- Main floating window
 	local window = self:object("Frame", {
 		Parent = gui,
 		Position = options.Position,
-		Size = UDim2.fromOffset(340, 480),
-		BackgroundColor3 = Color3.fromRGB(18, 18, 22),
-		ClipsDescendants = false -- Allow context menu to go outside
-	}):round(10):stroke(Color3.fromRGB(45, 45, 55), 2)
+		Size = UDim2.fromOffset(380, 450),
+		BackgroundColor3 = Color3.fromRGB(18, 20, 25),
+		ClipsDescendants = true
+	}):round(12):stroke(Color3.fromRGB(60, 70, 90), 2)
 	
-	-- Title Bar
-	local titleBar = window:object("Frame", {
-		Size = UDim2.new(1, 0, 0, 40),
-		BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-	}):round(10)
-	
-	-- Fix round corners at bottom of title bar
-	titleBar:object("Frame", {
-		Position = UDim2.new(0, 0, 1, -10),
-		Size = UDim2.new(1, 0, 0, 10),
-		BackgroundColor3 = Color3.fromRGB(25, 25, 30),
-		BorderSizePixel = 0
+	-- Glow effect
+	local glow = window:object("ImageLabel", {
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Size = UDim2.new(1, 40, 1, 40),
+		BackgroundTransparency = 1,
+		Image = "rbxassetid://6015897843",
+		ImageColor3 = Color3.fromRGB(100, 50, 150),
+		ImageTransparency = 0.7,
+		ScaleType = Enum.ScaleType.Slice,
+		SliceCenter = Rect.new(49, 49, 450, 450)
 	})
+	
+	-- Title bar
+	local titleBar = window:object("Frame", {
+		Size = UDim2.new(1, 0, 0, 35),
+		BackgroundColor3 = Color3.fromRGB(25, 28, 35)
+	}):round(12)
 	
 	local titleText = titleBar:object("TextLabel", {
 		Position = UDim2.fromOffset(15, 0),
-		Size = UDim2.new(1, -50, 1, 0),
+		Size = UDim2.new(1, -60, 1, 0),
 		BackgroundTransparency = 1,
 		Text = options.Title,
-		TextColor3 = Color3.fromRGB(200, 200, 220),
-		TextSize = 15,
+		TextColor3 = Color3.fromRGB(150, 160, 180),
+		TextSize = 14,
 		Font = Enum.Font.GothamBold,
 		TextXAlignment = Enum.TextXAlignment.Left
 	})
 	
+	-- Close button
 	local closeBtn = titleBar:object("TextButton", {
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, -10, 0.5, 0),
 		Size = UDim2.fromOffset(20, 20),
 		BackgroundTransparency = 1,
 		Text = "×",
-		TextColor3 = Color3.fromRGB(150, 150, 160),
+		TextColor3 = Color3.fromRGB(150, 150, 150),
 		TextSize = 24,
-		Font = Enum.Font.GothamMedium
+		Font = Enum.Font.GothamBold
 	})
 	
-	closeBtn.MouseButton1Click:Connect(function() gui.Enabled = false end)
+	closeBtn.MouseButton1Click:Connect(function()
+		gui.Enabled = false
+	end)
 	
-	-- PREVIEW AREA
+	-- Preview area
 	local previewArea = window:object("Frame", {
-		Position = UDim2.fromOffset(15, 55),
-		Size = UDim2.new(1, -30, 0, 320),
-		BackgroundColor3 = Color3.fromRGB(12, 12, 14)
-	}):round(8):stroke(Color3.fromRGB(35, 35, 40), 1)
-
-	-- CHARACTER MODEL
+		Position = UDim2.fromOffset(15, 45),
+		Size = UDim2.new(1, -30, 0, 300),
+		BackgroundColor3 = Color3.fromRGB(10, 12, 18)
+	}):round(8):stroke(Color3.fromRGB(40, 50, 70), 1)
+	
+	-- ========== GLOWING CHARACTER MODEL ==========
+	local charGlow = Color3.fromRGB(140, 80, 200)
+	local charOutline = Color3.fromRGB(100, 50, 160)
+	
+	-- Character container
 	local charContainer = previewArea:object("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.new(0.5, 0, 0.5, 0),
-		Size = UDim2.fromOffset(120, 200),
-		BackgroundTransparency = 1,
-		ZIndex = 2
+		Size = UDim2.fromOffset(100, 180),
+		BackgroundTransparency = 1
 	})
 	
-	local charColor = Color3.fromRGB(100, 70, 160) -- Purple theme
+	-- Head
+	local head = charContainer:object("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 0),
+		Size = UDim2.fromOffset(40, 40),
+		BackgroundColor3 = charGlow,
+		BackgroundTransparency = 0.3
+	}):round(20):stroke(charOutline, 2)
 	
-	-- Helper component for char parts
-	local function createPart(pos, size, radius)
-		return charContainer:object("Frame", {
-			AnchorPoint = Vector2.new(0.5, 0),
-			Position = pos,
-			Size = size,
-			BackgroundColor3 = charColor,
-			BackgroundTransparency = 0.2
-		}):round(radius)
-	end
+	-- Neck
+	local neck = charContainer:object("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 38),
+		Size = UDim2.fromOffset(15, 12),
+		BackgroundColor3 = charGlow,
+		BackgroundTransparency = 0.3
+	}):round(3):stroke(charOutline, 1)
 	
-	createPart(UDim2.new(0.5, 0, 0, 0), UDim2.fromOffset(45, 45), 22) -- Head
-	createPart(UDim2.new(0.5, 0, 0, 48), UDim2.fromOffset(60, 75), 8) -- Torso
-	createPart(UDim2.new(0, 15, 0, 48), UDim2.fromOffset(20, 60), 6) -- L Arm
-	createPart(UDim2.new(1, -15, 0, 48), UDim2.fromOffset(20, 60), 6) -- R Arm
-	createPart(UDim2.new(0.35, 0, 0, 125), UDim2.fromOffset(22, 70), 6) -- L Leg
-	createPart(UDim2.new(0.65, 0, 0, 125), UDim2.fromOffset(22, 70), 6) -- R Leg
+	-- Torso
+	local torso = charContainer:object("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 48),
+		Size = UDim2.fromOffset(55, 65),
+		BackgroundColor3 = charGlow,
+		BackgroundTransparency = 0.3
+	}):round(8):stroke(charOutline, 2)
 	
-	-- ZONES
+	-- Left Arm
+	local leftArm = charContainer:object("Frame", {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(0.5, -30, 0, 48),
+		Size = UDim2.fromOffset(18, 55),
+		BackgroundColor3 = charGlow,
+		BackgroundTransparency = 0.3
+	}):round(5):stroke(charOutline, 1)
+	
+	-- Right Arm
+	local rightArm = charContainer:object("Frame", {
+		AnchorPoint = Vector2.new(0, 0),
+		Position = UDim2.new(0.5, 30, 0, 48),
+		Size = UDim2.fromOffset(18, 55),
+		BackgroundColor3 = charGlow,
+		BackgroundTransparency = 0.3
+	}):round(5):stroke(charOutline, 1)
+	
+	-- Left Leg
+	local leftLeg = charContainer:object("Frame", {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(0.5, -5, 0, 110),
+		Size = UDim2.fromOffset(22, 60),
+		BackgroundColor3 = charGlow,
+		BackgroundTransparency = 0.3
+	}):round(5):stroke(charOutline, 1)
+	
+	-- Right Leg
+	local rightLeg = charContainer:object("Frame", {
+		AnchorPoint = Vector2.new(0, 0),
+		Position = UDim2.new(0.5, 5, 0, 110),
+		Size = UDim2.fromOffset(22, 60),
+		BackgroundColor3 = charGlow,
+		BackgroundTransparency = 0.3
+	}):round(5):stroke(charOutline, 1)
+	
+	-- ========== ELEMENT ZONES ==========
 	local zones = {
-		top = {pos = UDim2.new(0.5, 0, 0, 5), size = UDim2.new(0.8, 0, 0, 40), align = Enum.HorizontalAlignment.Center, anchor = Vector2.new(0.5, 0)},
-		left = {pos = UDim2.new(0, 5, 0.5, 0), size = UDim2.fromOffset(90, 200), align = Enum.HorizontalAlignment.Left, anchor = Vector2.new(0, 0.5)},
-		right = {pos = UDim2.new(1, -5, 0.5, 0), size = UDim2.fromOffset(90, 200), align = Enum.HorizontalAlignment.Right, anchor = Vector2.new(1, 0.5)},
-		bottom = {pos = UDim2.new(0.5, 0, 1, -5), size = UDim2.new(0.8, 0, 0, 40), align = Enum.HorizontalAlignment.Center, anchor = Vector2.new(0.5, 1)}
+		top = {container = nil, elements = {}, position = UDim2.new(0.5, 0, 0, 15)},
+		left = {container = nil, elements = {}, position = UDim2.new(0, 15, 0.5, 0)},
+		right = {container = nil, elements = {}, position = UDim2.new(1, -15, 0.5, 0)},
+		bottom = {container = nil, elements = {}, position = UDim2.new(0.5, 0, 1, -25)}
 	}
 	
-	local zoneFrames = {}
-	
-	for name, data in pairs(zones) do
-		local zFrame = previewArea:object("Frame", {
-			AnchorPoint = data.anchor,
-			Position = data.pos,
-			Size = data.size,
-			BackgroundTransparency = 1,
-			ZIndex = 5
-		})
-		
-		local layout = zFrame:object("UIListLayout", {
-			FillDirection = Enum.FillDirection.Vertical,
-			HorizontalAlignment = data.align,
-			Padding = UDim.new(0, 4),
-			SortOrder = Enum.SortOrder.LayoutOrder
-		})
-		
-		zoneFrames[name] = zFrame
-	end
-	
-	-- CONTEXT MENU
-	local contextMenu = gui:object("Frame", {
-		Size = UDim2.fromOffset(140, 110),
-		BackgroundColor3 = Color3.fromRGB(25, 25, 30),
-		Visible = false,
-		ZIndex = 100
-	}):round(6):stroke(Color3.fromRGB(50, 50, 60), 1)
-	
-	local colorPreview = contextMenu:object("Frame", {
-		Position = UDim2.fromOffset(10, 10),
-		Size = UDim2.fromOffset(120, 25),
-		BackgroundColor3 = Color3.new(1,1,1)
-	}):round(4)
-	
-	local activeElement = nil
-	-- (Context menu implementation would go deeper here, simplified for brevity but functional)
-	
-	-- ELEMENT CREATION & DRAGGING
-	local elementFrames = {}
-	
-	local function spawnElement(elem)
-		local isHealthBar = (elem.name == "Health Bar")
-		
-		-- Container frame (for dragging reference)
-		local itemFrame
-		
-		if isHealthBar then
-			itemFrame = Instance.new("Frame")
-			itemFrame.Size = UDim2.fromOffset(6, 100)
-			itemFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-			local fill = Instance.new("Frame", itemFrame)
-			fill.Size = UDim2.new(1, -2, 0.75, -2)
-			fill.Position = UDim2.fromOffset(1, 1)
-			fill.AnchorPoint = Vector2.new(0, 1)
-			fill.Position = UDim2.new(0, 1, 1, -1)
-			fill.BackgroundColor3 = elem.color
-			Instance.new("UICorner", itemFrame).CornerRadius = UDim.new(0, 3)
-			Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 2)
-		else
-			itemFrame = Instance.new("TextLabel")
-			itemFrame.Size = UDim2.fromOffset(80, 20)
-			itemFrame.BackgroundTransparency = 1
-			itemFrame.Text = elem.name == "Weapon" and "Sword" or elem.name
-			itemFrame.TextColor3 = elem.color
-			itemFrame.TextSize = 13
-			itemFrame.Font = Enum.Font.GothamBold
-			itemFrame.TextStrokeTransparency = 0.5
-			itemFrame.TextXAlignment = (elem.side == "left") and Enum.TextXAlignment.Left or 
-									   (elem.side == "right") and Enum.TextXAlignment.Right or 
-									   Enum.TextXAlignment.Center
-		end
-		
-		itemFrame.Name = elem.name
-		itemFrame.Parent = zoneFrames[elem.side]
-		itemFrame.Visible = elem.enabled
-		itemFrame.ZIndex = 10
-		
-		-- DRAG LOGIC
-		local dragging = false
-		local dragStart, startPos
-		
-		itemFrame.InputBegan:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton1 then
-				dragging = true
-				dragStart = input.Position
-				
-				-- Create ghost for dragging
-				local ghost = itemFrame:Clone()
-				ghost.Name = "Ghost"
-				ghost.Parent = gui
-				ghost.BackgroundTransparency = 0.5
-				ghost.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
-				ghost.Position = UDim2.fromOffset(input.Position.X, input.Position.Y)
-				if not isHealthBar then ghost.TextTransparency = 0.5 end
-				
-				-- Hide original while dragging? Or keep it? Let's keep it but maybe dim it
-				itemFrame.Visible = false
-				
-				local connMove, connEnd
-				
-				connMove = UserInputService.InputChanged:Connect(function(moveInput)
-					if moveInput.UserInputType == Enum.UserInputType.MouseMovement then
-						ghost.Position = UDim2.fromOffset(moveInput.Position.X - (ghost.Size.X.Offset/2), moveInput.Position.Y - (ghost.Size.Y.Offset/2))
-					end
-				end)
-				
-				connEnd = UserInputService.InputEnded:Connect(function(endInput)
-					if endInput.UserInputType == Enum.UserInputType.MouseButton1 then
-						dragging = false
-						connMove:Disconnect()
-						connEnd:Disconnect()
-						ghost:Destroy()
-						itemFrame.Visible = elem.enabled
-						
-						-- Check drop zone
-						local mousePos = endInput.Position
-						local bestZone, minDist = nil, math.huge
-						
-						for zName, zFrame in pairs(zoneFrames) do
-							local absPos = zFrame.AbsolutePosition
-							local absSize = zFrame.AbsoluteSize
-							local center = absPos + (absSize / 2)
-							local dist = (Vector2.new(mousePos.X, mousePos.Y) - center).Magnitude
-							
-							if dist < 150 and dist < minDist then
-								minDist = dist
-								bestZone = zFrame
-								elem.side = zName -- Update data
-							end
-						end
-						
-						if bestZone then
-							itemFrame.Parent = bestZone
-							-- Update alignment based on new zone
-							if not isHealthBar then
-								itemFrame.TextXAlignment = (elem.side == "left") and Enum.TextXAlignment.Left or 
-														   (elem.side == "right") and Enum.TextXAlignment.Right or 
-														   Enum.TextXAlignment.Center
-							end
-						end
-					end
-				end)
-			elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
-				-- Context Menu
-				activeElement = elem
-				contextMenu.Visible = true
-				contextMenu.Position = UDim2.fromOffset(input.Position.X, input.Position.Y)
-				colorPreview.BackgroundColor3 = elem.color
-			end
-		end)
-		
-		elementFrames[elem.name] = itemFrame
-	end
-	
-	for _, elem in ipairs(options.Elements) do
-		spawnElement(elem)
-	end
-	
-	-- Manage Elements Button
-	local manageBtn = window:object("TextButton", {
-		Position = UDim2.new(0, 15, 1, -55),
-		Size = UDim2.new(1, -30, 0, 40),
-		BackgroundColor3 = Color3.fromRGB(28, 28, 33),
-		Text = ""
-	}):round(8):stroke(Color3.fromRGB(50, 50, 60), 1)
-	
-	manageBtn:object("ImageLabel", {
-		Position = UDim2.fromOffset(10, 10),
-		Size = UDim2.fromOffset(20, 20),
-		BackgroundTransparency = 1,
-		Image = "rbxassetid://3926305904", -- Gear icon
-		ImageColor3 = Color3.fromRGB(150, 150, 160),
-		ImageRectOffset = Vector2.new(904, 284),
-        ImageRectSize = Vector2.new(36, 36)
+	-- Create zone containers
+	-- Top zone
+	zones.top.container = previewArea:object("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = zones.top.position,
+		Size = UDim2.new(0.8, 0, 0, 50),
+		BackgroundTransparency = 1
+	})
+	zones.top.container:object("UIListLayout", {
+		FillDirection = Enum.FillDirection.Vertical,
+		HorizontalAlignment = Enum.HorizontalAlignment.Center,
+		Padding = UDim.new(0, 3)
 	})
 	
-	manageBtn:object("TextLabel", {
+	-- Left zone
+	zones.left.container = previewArea:object("Frame", {
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = zones.left.position,
+		Size = UDim2.fromOffset(80, 150),
+		BackgroundTransparency = 1
+	})
+	zones.left.container:object("UIListLayout", {
+		FillDirection = Enum.FillDirection.Vertical,
+		HorizontalAlignment = Enum.HorizontalAlignment.Left,
+		Padding = UDim.new(0, 5)
+	})
+	
+	-- Right zone
+	zones.right.container = previewArea:object("Frame", {
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = zones.right.position,
+		Size = UDim2.fromOffset(80, 150),
+		BackgroundTransparency = 1
+	})
+	zones.right.container:object("UIListLayout", {
+		FillDirection = Enum.FillDirection.Vertical,
+		HorizontalAlignment = Enum.HorizontalAlignment.Right,
+		Padding = UDim.new(0, 5)
+	})
+	
+	-- Bottom zone
+	zones.bottom.container = previewArea:object("Frame", {
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = zones.bottom.position,
+		Size = UDim2.new(0.8, 0, 0, 50),
+		BackgroundTransparency = 1
+	})
+	zones.bottom.container:object("UIListLayout", {
+		FillDirection = Enum.FillDirection.Vertical,
+		HorizontalAlignment = Enum.HorizontalAlignment.Center,
+		Padding = UDim.new(0, 3)
+	})
+	
+	-- ========== HEALTH BAR (Special Element) ==========
+	local healthBarContainer = previewArea:object("Frame", {
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(0.5, -60, 0.5, 0),
+		Size = UDim2.fromOffset(8, 120),
+		BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+	}):round(3):stroke(Color3.fromRGB(60, 60, 70), 1)
+	
+	local healthFill = healthBarContainer:object("Frame", {
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, 2, 1, -2),
+		Size = UDim2.new(1, -4, 0.75, 0),
+		BackgroundColor3 = Color3.fromRGB(100, 255, 100)
+	}):round(2)
+	
+	local healthText = previewArea:object("TextLabel", {
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(0.5, -75, 0.5, 0),
+		Size = UDim2.fromOffset(30, 20),
+		BackgroundTransparency = 1,
+		Text = "75",
+		TextColor3 = Color3.fromRGB(255, 255, 255),
+		TextSize = 14,
+		Font = Enum.Font.GothamBold,
+		TextXAlignment = Enum.TextXAlignment.Right
+	})
+	
+	-- ========== ELEMENT STORAGE ==========
+	local elementData = {}
+	local elementFrames = {}
+	
+	-- Create element in zone
+	local function createElementInZone(elemInfo, zone)
+		local isHealthBar = elemInfo.name == "Health Bar"
+		if isHealthBar then
+			healthBarContainer.Visible = elemInfo.enabled
+			healthText.Visible = elemInfo.enabled
+			return
+		end
+		
+		local container = zones[zone].container
+		if not container then return end
+		
+		local elemFrame = self:object("TextLabel", {
+			Parent = container.AbsoluteObject,
+			Size = UDim2.new(1, 0, 0, 18),
+			BackgroundTransparency = 1,
+			Text = elemInfo.name == "Weapon" and "Sword" or 
+				   elemInfo.name == "Distance" and "15m" or
+				   elemInfo.name == "Parry Count" and "Parried: 0" or
+				   elemInfo.name,
+			TextColor3 = elemInfo.color,
+			TextSize = 13,
+			Font = Enum.Font.GothamBold,
+			TextXAlignment = (zone == "left") and Enum.TextXAlignment.Left or 
+							 (zone == "right") and Enum.TextXAlignment.Right or
+							 Enum.TextXAlignment.Center,
+			TextStrokeTransparency = 0.3,
+			Visible = elemInfo.enabled
+		})
+		
+		elementFrames[elemInfo.name] = elemFrame
+		table.insert(zones[zone].elements, {frame = elemFrame, data = elemInfo})
+	end
+	
+	-- Initialize elements
+	for _, elem in ipairs(options.Elements) do
+		elementData[elem.name] = elem
+		createElementInZone(elem, elem.side)
+	end
+	
+	-- ========== MANAGE ELEMENTS BUTTON ==========
+	local manageBtn = window:object("TextButton", {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 355),
+		Size = UDim2.new(1, -30, 0, 35),
+		BackgroundColor3 = Color3.fromRGB(35, 40, 50),
+		Text = "",
+	}):round(8):stroke(Color3.fromRGB(60, 70, 90), 1)
+	
+	local manageIcon = manageBtn:object("TextLabel", {
+		Position = UDim2.fromOffset(15, 0),
+		Size = UDim2.new(0, 20, 1, 0),
+		BackgroundTransparency = 1,
+		Text = "⚙",
+		TextColor3 = Color3.fromRGB(100, 150, 200),
+		TextSize = 18,
+		Font = Enum.Font.GothamBold
+	})
+	
+	local manageText = manageBtn:object("TextLabel", {
 		Position = UDim2.fromOffset(40, 0),
-		Size = UDim2.new(1, -40, 1, 0),
+		Size = UDim2.new(1, -50, 1, 0),
 		BackgroundTransparency = 1,
 		Text = "Manage Elements",
-		TextColor3 = Color3.fromRGB(200, 200, 220),
+		TextColor3 = Color3.fromRGB(150, 160, 180),
 		TextSize = 14,
 		Font = Enum.Font.GothamBold,
 		TextXAlignment = Enum.TextXAlignment.Left
 	})
 	
-	-- ========== MANAGE ELEMENTS POPUP ==========
+	-- ========== ELEMENT MANAGER POPUP ==========
 	local managerPopup = window:object("Frame", {
 		Position = UDim2.new(0, 15, 0, 45),
 		Size = UDim2.new(1, -30, 1, -60),
 		BackgroundColor3 = Color3.fromRGB(15, 18, 22),
 		Visible = false,
 		ZIndex = 20
-	}):round(8):stroke(Color3.fromRGB(50, 50, 60), 1)
+	}):round(8)
 	
 	local managerTitle = managerPopup:object("TextLabel", {
 		Position = UDim2.fromOffset(15, 10),
@@ -4269,7 +4295,7 @@ function Library:esp_window(options)
 		BackgroundTransparency = 1,
 		Text = "Manage Elements",
 		TextColor3 = Color3.fromRGB(200, 210, 230),
-		TextSize = 16,
+		TextSize = 18,
 		Font = Enum.Font.GothamBold,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		ZIndex = 21
@@ -4287,7 +4313,9 @@ function Library:esp_window(options)
 		ZIndex = 21
 	}):round(4)
 	
-	closeManager.MouseButton1Click:Connect(function() managerPopup.Visible = false end)
+	closeManager.MouseButton1Click:Connect(function()
+		managerPopup.Visible = false
+	end)
 	
 	-- Categories
 	local categories = {Main = {}, Combat = {}, Item = {}}
@@ -4300,6 +4328,7 @@ function Library:esp_window(options)
 	local categoryY = 45
 	for catName, catElements in pairs(categories) do
 		if #catElements > 0 then
+			-- Category title
 			local catTitle = managerPopup:object("TextLabel", {
 				Position = UDim2.fromOffset(15, categoryY),
 				Size = UDim2.new(1, -30, 0, 20),
@@ -4313,11 +4342,12 @@ function Library:esp_window(options)
 			})
 			categoryY = categoryY + 25
 			
+			-- Element buttons row
 			local elemX = 15
 			for _, elem in ipairs(catElements) do
 				local elemBtn = managerPopup:object("TextButton", {
 					Position = UDim2.fromOffset(elemX, categoryY),
-					Size = UDim2.fromOffset(80, 26),
+					Size = UDim2.fromOffset(70, 26),
 					BackgroundColor3 = elem.enabled and Color3.fromRGB(40, 80, 120) or Color3.fromRGB(40, 45, 55),
 					Text = elem.name,
 					TextColor3 = Color3.fromRGB(220, 225, 235),
@@ -4326,7 +4356,9 @@ function Library:esp_window(options)
 					ZIndex = 21
 				}):round(5)
 				
-				if elem.enabled then elemBtn:stroke(Color3.fromRGB(80, 140, 200), 1) end
+				if elem.enabled then
+					elemBtn:stroke(Color3.fromRGB(80, 140, 200), 1)
+				end
 				
 				elemBtn.MouseButton1Click:Connect(function()
 					elem.enabled = not elem.enabled
@@ -4335,7 +4367,6 @@ function Library:esp_window(options)
 						elemBtn:stroke(Color3.fromRGB(80, 140, 200), 1)
 					else
 						elemBtn.BackgroundColor3 = Color3.fromRGB(40, 45, 55)
-						if elemBtn:FindFirstChild("UIStroke") then elemBtn.UIStroke:Destroy() end
 					end
 					
 					-- Update element visibility
@@ -4349,7 +4380,7 @@ function Library:esp_window(options)
 					options.OnElementToggle(elem.name, elem.enabled)
 				end)
 				
-				elemX = elemX + 88
+				elemX = elemX + 78
 				if elemX > 280 then
 					elemX = 15
 					categoryY = categoryY + 32
@@ -4363,55 +4394,78 @@ function Library:esp_window(options)
 		managerPopup.Visible = not managerPopup.Visible
 	end)
 	
-	-- Context Menu Logic
-	-- Simple color loop for context menu click
-	colorPreview.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 and activeElement then
-			-- Cycle colors for demo (Red -> Green -> Blue -> White)
-			local c = activeElement.color
-			local nextC = Color3.fromRGB(255, 100, 100) -- Red
-			if c.R > 0.8 then nextC = Color3.fromRGB(100, 255, 100) -- Green
-			elseif c.G > 0.8 then nextC = Color3.fromRGB(100, 100, 255) -- Blue
-			elseif c.B > 0.8 then nextC = Color3.fromRGB(255, 255, 255) end -- White
-			
-			activeElement.color = nextC
-			colorPreview.BackgroundColor3 = nextC
-			if elementFrames[activeElement.name] and activeElement.name ~= "Health Bar" then
-				elementFrames[activeElement.name].TextColor3 = nextC
-			end
-			options.OnElementUpdate(activeElement.name, {color = nextC})
-		end
-	end)
+	-- ========== DRAGGING ==========
+	local dragging = false
+	local dragStart, startPos
 	
-	-- Window Dragging
-	local winDrag = false
-	local winStart, winPos
 	titleBar.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
-			winDrag = true
-			winStart = input.Position
-			winPos = window.Position
+			dragging = true
+			dragStart = input.Position
+			startPos = window.Position
 		end
 	end)
 	
 	UserInputService.InputChanged:Connect(function(input)
-		if winDrag and input.UserInputType == Enum.UserInputType.MouseMovement then
-			local delta = input.Position - winStart
-			window.Position = UDim2.new(winPos.X.Scale, winPos.X.Offset + delta.X, winPos.Y.Scale, winPos.Y.Offset + delta.Y)
+		if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+			local delta = input.Position - dragStart
+			window.Position = UDim2.new(
+				startPos.X.Scale,
+				startPos.X.Offset + delta.X,
+				startPos.Y.Scale,
+				startPos.Y.Offset + delta.Y
+			)
 		end
 	end)
 	
 	UserInputService.InputEnded:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 then winDrag = false end
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			dragging = false
+		end
 	end)
 	
-	-- Public methods
+	-- Methods
 	local methods = {}
-	function methods:Show() gui.Enabled = true end
-	function methods:Hide() gui.Enabled = false end
-	function methods:Toggle() gui.Enabled = not gui.Enabled end
-	function methods:Destroy() gui:Destroy() end
-	function methods:IsVisible() return gui.Enabled end
+	
+	function methods:Show()
+		gui.Enabled = true
+	end
+	
+	function methods:Hide()
+		gui.Enabled = false
+	end
+	
+	function methods:Toggle()
+		gui.Enabled = not gui.Enabled
+	end
+	
+	function methods:SetHealth(percent)
+		healthFill.Size = UDim2.new(1, -4, percent, 0)
+		healthText.Text = tostring(math.floor(percent * 100))
+		
+		-- Color based on health
+		if percent > 0.6 then
+			healthFill.BackgroundColor3 = Color3.fromRGB(100, 255, 100)
+		elseif percent > 0.3 then
+			healthFill.BackgroundColor3 = Color3.fromRGB(255, 200, 50)
+		else
+			healthFill.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+		end
+	end
+	
+	function methods:SetElementText(name, text)
+		if elementFrames[name] then
+			elementFrames[name].Text = text
+		end
+	end
+	
+	function methods:GetElementData()
+		return elementData
+	end
+	
+	function methods:Destroy()
+		gui:Destroy()
+	end
 	
 	return methods
 end
