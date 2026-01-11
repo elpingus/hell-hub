@@ -3586,6 +3586,202 @@ function Library:label(options)
 	return methods
 end
 
+-- =====================================================
+-- ESP PREVIEW COMPONENT
+-- Allows users to drag and position ESP elements
+-- =====================================================
+function Library:esp_preview(options)
+	options = self:set_defaults({
+		Name = "ESP Preview",
+		Description = "Drag elements to position them",
+		Elements = {"Name", "Distance", "Health", "Parry"},
+		Callback = function(positions) end,
+		DefaultPositions = {}
+	}, options)
+	
+	-- Create main container
+	local previewContainer = self.container:object("TextButton", {
+		Theme = {BackgroundColor3 = "Secondary"},
+		Size = UDim2.new(1, -20, 0, 280)
+	}):round(7)
+	
+	-- Title
+	local title = previewContainer:object("TextLabel", {
+		BackgroundTransparency = 1,
+		Position = UDim2.fromOffset(10, 5),
+		Size = UDim2.new(1, -20, 0, 22),
+		Text = options.Name,
+		TextSize = 22,
+		Theme = {TextColor3 = "StrongText"},
+		TextXAlignment = Enum.TextXAlignment.Left
+	})
+	
+	-- Description
+	local desc = previewContainer:object("TextLabel", {
+		BackgroundTransparency = 1,
+		Position = UDim2.fromOffset(10, 27),
+		Size = UDim2.new(1, -20, 0, 18),
+		Text = options.Description,
+		TextSize = 16,
+		Theme = {TextColor3 = "WeakText"},
+		TextXAlignment = Enum.TextXAlignment.Left
+	})
+	
+	-- Preview area (dark background)
+	local previewArea = previewContainer:object("Frame", {
+		Position = UDim2.fromOffset(10, 55),
+		Size = UDim2.new(1, -20, 0, 200),
+		BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+	}):round(5)
+	
+	-- Character silhouette (simple representation)
+	local charSilhouette = previewArea:object("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+		Size = UDim2.fromOffset(50, 100),
+		BackgroundColor3 = Color3.fromRGB(80, 80, 90)
+	}):round(8)
+	
+	-- Head circle
+	local headCircle = charSilhouette:object("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, -25),
+		Size = UDim2.fromOffset(30, 30),
+		BackgroundColor3 = Color3.fromRGB(80, 80, 90)
+	}):round(15)
+	
+	-- ESP elements container (on top of character)
+	local elementsContainer = previewArea:object("Frame", {
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1
+	})
+	
+	-- Store element positions
+	local elementPositions = {}
+	local elementLabels = {}
+	
+	-- Default positions for each element
+	local defaultOffsets = {
+		Name = UDim2.new(0.5, 0, 0.15, 0),
+		Distance = UDim2.new(0.5, 0, 0.25, 0),
+		Health = UDim2.new(0.5, 0, 0.35, 0),
+		Parry = UDim2.new(0.5, 0, 0.45, 0)
+	}
+	
+	-- Create draggable ESP elements
+	for i, elementName in ipairs(options.Elements) do
+		local startPos = options.DefaultPositions[elementName] or defaultOffsets[elementName] or UDim2.new(0.5, 0, 0.1 + (i * 0.1), 0)
+		
+		local element = elementsContainer:object("TextButton", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = startPos,
+			Size = UDim2.fromOffset(80, 20),
+			BackgroundColor3 = Color3.fromRGB(45, 45, 55),
+			Text = elementName,
+			TextSize = 14,
+			TextColor3 = Color3.fromRGB(255, 255, 255),
+			Font = Enum.Font.GothamBold
+		}):round(4):stroke(Color3.fromRGB(100, 100, 120), 1)
+		
+		elementLabels[elementName] = element
+		elementPositions[elementName] = startPos
+		
+		-- Make draggable
+		local dragging = false
+		local dragStart, startOffset
+		
+		element.MouseButton1Down:Connect(function()
+			dragging = true
+			dragStart = UserInputService:GetMouseLocation()
+			startOffset = element.Position
+		end)
+		
+		UserInputService.InputEnded:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 then
+				dragging = false
+				-- Save position
+				elementPositions[elementName] = element.Position
+				options.Callback(elementPositions)
+			end
+		end)
+		
+		UserInputService.InputChanged:Connect(function(input)
+			if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+				local mousePos = UserInputService:GetMouseLocation()
+				local delta = mousePos - dragStart
+				
+				local areaSize = previewArea.AbsoluteSize
+				local newX = math.clamp(startOffset.X.Scale + (delta.X / areaSize.X), 0, 1)
+				local newY = math.clamp(startOffset.Y.Scale + (delta.Y / areaSize.Y), 0, 1)
+				
+				element.Position = UDim2.new(newX, 0, newY, 0)
+			end
+		end)
+		
+		-- Hover effect
+		element.MouseEnter:Connect(function()
+			element:tween{BackgroundColor3 = Color3.fromRGB(60, 60, 75)}
+		end)
+		
+		element.MouseLeave:Connect(function()
+			if not dragging then
+				element:tween{BackgroundColor3 = Color3.fromRGB(45, 45, 55)}
+			end
+		end)
+	end
+	
+	-- Reset button
+	local resetBtn = previewContainer:object("TextButton", {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -10, 0, 8),
+		Size = UDim2.fromOffset(60, 20),
+		BackgroundColor3 = Color3.fromRGB(60, 60, 70),
+		Text = "Reset",
+		TextSize = 12,
+		TextColor3 = Color3.fromRGB(200, 200, 200),
+		Font = Enum.Font.Gotham
+	}):round(4)
+	
+	resetBtn.MouseButton1Click:Connect(function()
+		for elementName, element in pairs(elementLabels) do
+			local defaultPos = defaultOffsets[elementName] or UDim2.new(0.5, 0, 0.3, 0)
+			element:tween{Position = defaultPos}
+			elementPositions[elementName] = defaultPos
+		end
+		options.Callback(elementPositions)
+	end)
+	
+	-- Hover effects for reset button
+	resetBtn.MouseEnter:Connect(function()
+		resetBtn:tween{BackgroundColor3 = Color3.fromRGB(80, 80, 95)}
+	end)
+	resetBtn.MouseLeave:Connect(function()
+		resetBtn:tween{BackgroundColor3 = Color3.fromRGB(60, 60, 70)}
+	end)
+	
+	self:_resize_tab()
+	
+	local methods = {}
+	
+	function methods:GetPositions()
+		return elementPositions
+	end
+	
+	function methods:SetElementVisible(name, visible)
+		if elementLabels[name] then
+			elementLabels[name].Visible = visible
+		end
+	end
+	
+	function methods:SetElementColor(name, color)
+		if elementLabels[name] then
+			elementLabels[name].TextColor3 = color
+		end
+	end
+	
+	return methods
+end
+
 return setmetatable(Library, {
 	__index = function(_, i)
 		return rawget(Library, i:lower())
