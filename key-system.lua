@@ -6,7 +6,7 @@
 -- Key System Configuration
 local MainScriptURL = "https://raw.githubusercontent.com/elpingus/hell-hub/refs/heads/main/hellhubmain"
 local GetKeyURL = "https://work.ink/2dxZ/hell-hub-key"
-local ValidKey = "testcw"
+local ValidKey = "testc2"
 
 -- Create Key System UI
 local function createKeySystem()
