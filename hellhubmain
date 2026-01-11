@@ -36,7 +36,9 @@ task.spawn(function()
     task.wait(5) -- Wait 5 seconds before first check
     while keyCheckRunning do
         local success, result = pcall(function()
-            local currentValidKey = game:HttpGet(KeyValidationURL)
+            -- Add random param to bypass cache
+            local noCacheURL = KeyValidationURL .. "?nocache=" .. tostring(os.time())
+            local currentValidKey = game:HttpGet(noCacheURL)
             if currentValidKey then
                 currentValidKey = currentValidKey:gsub("%s+", "") -- Remove whitespace
                 print("[Hell Hub] Current valid key:", currentValidKey, "| Your key:", UserEnteredKey)
