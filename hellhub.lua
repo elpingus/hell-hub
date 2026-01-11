@@ -3997,7 +3997,7 @@ function Library:esp_window(options)
 		Size = UDim2.new(1, 40, 1, 40),
 		BackgroundTransparency = 1,
 		Image = "rbxassetid://6015897843",
-		ImageColor3 = Color3.fromRGB(100, 50, 150),
+		ImageColor3 = Color3.fromRGB(0, 80, 120),
 		ImageTransparency = 0.7,
 		ScaleType = Enum.ScaleType.Slice,
 		SliceCenter = Rect.new(49, 49, 450, 450)
@@ -4044,8 +4044,8 @@ function Library:esp_window(options)
 	}):round(8):stroke(Color3.fromRGB(40, 50, 70), 1)
 	
 	-- ========== GLOWING CHARACTER MODEL ==========
-	local charGlow = Color3.fromRGB(140, 80, 200)
-	local charOutline = Color3.fromRGB(100, 50, 160)
+	local charGlow = Color3.fromRGB(0, 180, 220)
+	local charOutline = Color3.fromRGB(0, 120, 160)
 	
 	-- Character container
 	local charContainer = previewArea:object("Frame", {
@@ -4226,9 +4226,9 @@ function Library:esp_window(options)
 			Parent = container.AbsoluteObject,
 			Size = UDim2.new(1, 0, 0, 18),
 			BackgroundTransparency = 1,
-			Text = elemInfo.name == "Weapon" and "Sword" or 
+			Text = elemInfo.name == "Weapon" and "Diamond Sword" or 
 				   elemInfo.name == "Distance" and "15m" or
-				   elemInfo.name == "Parry Count" and "Parried: 0" or
+				   elemInfo.name == "Parry Count" and "Parried: 3" or
 				   elemInfo.name,
 			TextColor3 = elemInfo.color,
 			TextSize = 13,
