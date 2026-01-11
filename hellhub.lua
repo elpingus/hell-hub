@@ -423,10 +423,10 @@ function Library:create(options)
 	end
 
 	options = self:set_defaults({
-		Name = "Mercury",
+		Name = "Hell Hub",
 		Size = UDim2.fromOffset(600, 400),
 		Theme = self.Themes[settings.Theme],
-		Link = "https://github.com/deeeity/mercury-lib"
+		Link = "https://github.com/fabi3c/hell-hub"
 	}, options)
 
 	if getgenv and getgenv().MercuryUI then
@@ -899,6 +899,47 @@ function Library:create(options)
 		Default = 14,
 		Callback = function(value)
 			Library.DragSpeed = (20 - value)/100
+		end,
+	}
+
+	settingsTab:toggle{
+		Name = "Notifications",
+		Description = "Enable or disable notifications.",
+		StartingState = true,
+		Callback = function(state)
+			Library.NotificationsEnabled = state
+		end,
+	}
+
+	settingsTab:toggle{
+		Name = "Auto Save Settings",
+		Description = "Automatically save your settings.",
+		StartingState = true,
+		Callback = function(state)
+			Library.AutoSave = state
+		end,
+	}
+
+	settingsTab:slider{
+		Name = "UI Scale",
+		Description = "Adjust the UI size.",
+		Min = 50,
+		Max = 150,
+		Default = 100,
+		Callback = function(value)
+			local scale = value / 100
+			core.Size = UDim2.fromOffset(options.Size.X.Offset * scale, options.Size.Y.Offset * scale)
+		end,
+	}
+
+	settingsTab:button{
+		Name = "Reset All Settings",
+		Description = "Reset everything to default values.",
+		Callback = function()
+			Library.LockDragging = true
+			Library.DragSpeed = 0.06
+			Library.NotificationsEnabled = true
+			Library.AutoSave = true
 		end,
 	}
 
