@@ -1437,6 +1437,79 @@ function Library:toggle(options)
 	return methods
 end
 
+function Library:textbox(options)
+	options = self:set_defaults({
+		Name = "TextBox",
+		Default = "",
+		Placeholder = "Enter text...",
+		Description = nil,
+		Callback = function(text) end
+	}, options)
+
+	local textboxContainer = self.container:object("Frame", {
+		Theme = {BackgroundColor3 = "Secondary"},
+		Size = UDim2.new(1, -20, 0, 52)
+	}):round(7)
+
+	local text = textboxContainer:object("TextLabel", {
+		BackgroundTransparency = 1,
+		Position = UDim2.fromOffset(10, (options.Description and 5) or 0),
+		Size = (options.Description and UDim2.new(0.4, -10, 0, 22)) or UDim2.new(0.4, -10, 1, 0),
+		Text = options.Name,
+		TextSize = 22,
+		Theme = {TextColor3 = "StrongText"},
+		TextXAlignment = Enum.TextXAlignment.Left
+	})
+
+	if options.Description then
+		local description = textboxContainer:object("TextLabel", {
+			BackgroundTransparency = 1,
+			Position = UDim2.fromOffset(10, 27),
+			Size = UDim2.new(0.4, -10, 0, 20),
+			Text = options.Description,
+			TextSize = 18,
+			Theme = {TextColor3 = "WeakText"},
+			TextXAlignment = Enum.TextXAlignment.Left
+		})
+	end
+
+	local inputBox = textboxContainer:object("TextBox", {
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -10, 0.5, 0),
+		Size = UDim2.new(0.55, -10, 0, 30),
+		Theme = {BackgroundColor3 = "Main", TextColor3 = "StrongText"},
+		PlaceholderText = options.Placeholder,
+		PlaceholderColor3 = Color3.fromRGB(150, 150, 150),
+		Text = options.Default,
+		TextSize = 18,
+		ClearTextOnFocus = false
+	}):round(5)
+
+	inputBox.FocusLost:Connect(function(enterPressed)
+		options.Callback(inputBox.Text)
+	end)
+
+	inputBox.Changed:Connect(function(prop)
+		if prop == "Text" then
+			options.Callback(inputBox.Text)
+		end
+	end)
+
+	self:_resize_tab()
+
+	local methods = {}
+
+	function methods:SetText(newText)
+		inputBox.Text = newText
+	end
+
+	function methods:GetText()
+		return inputBox.Text
+	end
+
+	return methods
+end
+
 function Library:dropdown(options)
 	options = self:set_defaults({
 		Name = "Dropdown",
