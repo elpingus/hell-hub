@@ -5,9 +5,21 @@
 
 -- Key System Configuration
 local MainScriptURL = "https://raw.githubusercontent.com/elpingus/hell-hub/refs/heads/main/hellhubmain"
+local ValidKeyURL = "https://raw.githubusercontent.com/elpingus/hell-hub/refs/heads/main/valid-key.txt"
 local GetKeyURL = "https://work.ink/2dxZ/hell-hub-key"
-local ValidKey = "testc3"
 
+-- Fetch valid key from GitHub
+local ValidKey = ""
+pcall(function()
+    ValidKey = game:HttpGet(ValidKeyURL)
+    if ValidKey then
+        ValidKey = ValidKey:gsub("%s+", "") -- Remove whitespace
+    end
+end)
+
+if ValidKey == "" then
+    warn("[Hell Hub] Failed to fetch valid key from server!")
+end
 -- Create Key System UI
 local function createKeySystem()
     local keyGui = Instance.new("ScreenGui")
