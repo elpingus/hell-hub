@@ -124,6 +124,15 @@ local function createKeySystem()
                 task.wait(0.3)
                 keyGui:Destroy()
                 
+                -- Set protection tokens before loading main script
+                local timeToken = tostring(math.floor(os.time() / 60)) -- Changes every minute
+                local secretKey = "HELLHUB_" .. timeToken .. "_VERIFIED"
+                getgenv().HellHubAuth = {
+                    Token = secretKey,
+                    Time = os.time(),
+                    Verified = true
+                }
+                
                 local success, errorMsg = pcall(function()
                     local scriptContent = game:HttpGet(MainScriptURL)
                     if scriptContent and #scriptContent > 100 then
