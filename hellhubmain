@@ -46,25 +46,41 @@ task.spawn(function()
                     -- Key has changed on GitHub, kick user
                     print("[Hell Hub] KEY MISMATCH! Kicking user...")
                     keyCheckRunning = false
+                    
+                    -- Show warning notification
                     pcall(function()
-                        -- Show warning notification if Library exists
-                        if Library and Library.notification then
-                            Library:notification{
-                                Title = "Key Expired",
-                                Text = "Your key has been revoked. Please get a new key!",
-                                Duration = 5
-                            }
+                        if Window and Window.gui then
+                            Window.gui:Destroy()
                         end
                     end)
-                    task.wait(2)
-                    -- Destroy all Hell Hub GUIs
-                    for _, gui in pairs(game:GetService("CoreGui"):GetChildren()) do
-                        pcall(function()
-                            if gui.Name:find("Hell") or gui.Name:find("ESP") or gui.Name:find("Crosshair") then
-                                gui:Destroy()
+                    
+                    task.wait(0.5)
+                    
+                    -- Destroy ALL Hell Hub related GUIs
+                    pcall(function()
+                        for _, gui in pairs(game:GetService("CoreGui"):GetChildren()) do
+                            if gui:IsA("ScreenGui") then
+                                local name = gui.Name:lower()
+                                if name:find("hell") or name:find("hub") or name:find("esp") or name:find("crosshair") or name:find("mercury") then
+                                    gui:Destroy()
+                                end
                             end
-                        end)
-                    end
+                        end
+                    end)
+                    
+                    -- Also destroy from PlayerGui
+                    pcall(function()
+                        for _, gui in pairs(game.Players.LocalPlayer.PlayerGui:GetChildren()) do
+                            if gui:IsA("ScreenGui") then
+                                local name = gui.Name:lower()
+                                if name:find("hell") or name:find("hub") then
+                                    gui:Destroy()
+                                end
+                            end
+                        end
+                    end)
+                    
+                    print("[Hell Hub] Script destroyed! Key expired.")
                 end
             end
         end)
