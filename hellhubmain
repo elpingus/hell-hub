@@ -433,21 +433,22 @@ pcall(function()
     end
 end)
 
+-- Remote blocking (ONE TIME at startup - NOT a loop!)
 task.spawn(function()
-    while task.wait(1) do
-        pcall(function()
-            for _, v in pairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
-                local name = v.Name:lower()
-                for _, blocked in pairs(blockedRemotes) do
-                    if name:find(blocked:lower()) and (v:IsA("RemoteEvent") or v:IsA("RemoteFunction")) then
-                        pcall(function()
-                            v.OnClientInvoke = function() return nil end
-                        end)
-                    end
+    task.wait(2) -- Wait for game to load
+    pcall(function()
+        for _, v in pairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
+            local name = v.Name:lower()
+            for _, blocked in pairs(blockedRemotes) do
+                if name:find(blocked:lower()) and (v:IsA("RemoteEvent") or v:IsA("RemoteFunction")) then
+                    pcall(function()
+                        v.OnClientInvoke = function() return nil end
+                    end)
                 end
             end
-        end)
-    end
+        end
+        print("[Hell Hub] ✅ Remote scan complete (one-time)")
+    end)
 end)
 
 -- ═══════════════════════════════════════════════════════════════════
@@ -863,12 +864,12 @@ end)
 
 task.spawn(function()
     while true do
-        task.wait(0.04 + math.random() * 0.02)
+        task.wait(0.2) -- Increased from 0.04 to reduce FPS impact
         if ghostModeEnabled then
             pcall(function()
                 local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                 if root then
-                    root.CFrame = root.CFrame * CFrame.new(0, ghostYOffset * 0.1, 0)
+                    root.CFrame = root.CFrame * CFrame.new(0, ghostYOffset * 0.5, 0) -- Adjusted multiplier
                 end
             end)
         end
@@ -926,22 +927,28 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
-task.spawn(function()
-    while task.wait(0.1) do
-        if Settings.noParryCooldown then
-            for i, v in pairs(getgc(true)) do
-                if type(v) == "table" then
-                    if rawget(v, "PARRY_COOLDOWN") then
-                        v.PARRY_COOLDOWN = 0.1
-                    end
-                    if rawget(v, "getParryCooldown") then
-                        v.getParryCooldown = function() return 0.1 end
-                    end
+-- No Parry Cooldown (ONE TIME when enabled, NOT a loop!)
+local parryCooldownPatched = false
+local function patchParryCooldown()
+    if parryCooldownPatched then return end
+    pcall(function()
+        for i, v in pairs(getgc(true)) do
+            if type(v) == "table" then
+                if rawget(v, "PARRY_COOLDOWN") then
+                    v.PARRY_COOLDOWN = 0.1
+                end
+                if rawget(v, "PARRY_COOLDOWN_IN_SECONDS") then
+                    v.PARRY_COOLDOWN_IN_SECONDS = 0.1
+                end
+                if rawget(v, "PARRY_COOLDOWN_IN_SECONDS_AFTER_SUCCESSFUL_PARRY") then
+                    v.PARRY_COOLDOWN_IN_SECONDS_AFTER_SUCCESSFUL_PARRY = 0.1
                 end
             end
         end
-    end
-end)
+        parryCooldownPatched = true
+        print("[Hell Hub] ✅ Parry cooldown patched (one-time)")
+    end)
+end
 
 CombatTab:toggle{ Name = "Spin Bot", Description = "360 derece donerek vur", StartingState = false, Callback = function(s) spinBotEnabled = s end }
 CombatTab:slider{ Name = "Spin Speed", Description = "Donme hizi", Min = 5, Max = 50, Default = 15, Callback = function(v) spinSpeed = v end }
@@ -949,7 +956,12 @@ CombatTab:slider{ Name = "Spin Speed", Description = "Donme hizi", Min = 5, Max 
 CombatTab:toggle{ Name = "Blink (C Tusu)", Description = "C'ye bas, baktigin yone isinlan", StartingState = false, Callback = function(s) blinkEnabled = s end }
 CombatTab:slider{ Name = "Blink Distance", Description = "Isinlanma mesafesi", Min = 5, Max = 50, Default = 20, Callback = function(v) blinkDistance = v end }
 
-CombatTab:toggle{ Name = "No Parry Cooldown", Description = "Parry bekleme suresini kaldir", StartingState = false, Callback = function(s) Settings.noParryCooldown = s end }
+CombatTab:toggle{ Name = "No Parry Cooldown", Description = "Parry CD kaldir (tek seferlik)", StartingState = false, Callback = function(s) 
+    Settings.noParryCooldown = s 
+    if s then 
+        patchParryCooldown() 
+    end 
+end }
 
 -- ═══════════════════════════════════════════════════════════════════
 -- COMBAT WARRIORS BYPASS TOGGLES (Based on Anti-Cheat Analysis)
@@ -1418,64 +1430,47 @@ local function initHooks()
     
     setreadonly(mt, true)
 end
-task.spawn(initHooks)
 
--- [FUNCTION] Advanced GC-Based Features (Stealth Mode)
+-- [FUNCTION] Advanced GC-Based Features (ONE-TIME HOOKS - NO SPAM!)
+local advancedMiscPatched = false
 local function updateAdvancedMisc()
-    if not (Settings.infiniteStamina or Settings.noJumpCooldown or Settings.noDashCooldown) then return end
+    if advancedMiscPatched then return end
+    if not (Settings.noJumpCooldown or Settings.noDashCooldown) then return end
     
-    for i, v in pairs(getgc(true)) do
-        if type(v) == "table" then
-            -- 1. Infinite Stamina (Aggressive Spam Method - Restored)
-            if Settings.infiniteStamina then
-                if rawget(v, "_setStamina") or rawget(v, "_stamina") then
-                     if rawget(v, "_setStamina") then
-                        v._setStamina = function(self, val)
-                            self._stamina = math.huge
-                            if self._staminaChangedSignal then 
-                                self._staminaChangedSignal:Fire(100) 
-                            end
-                        end
+    pcall(function()
+        for i, v in pairs(getgc(true)) do
+            if type(v) == "table" then
+                -- NOTE: Infinite Stamina is now handled by the dedicated hook system above
+                -- DO NOT add spam loops here!
+                
+                -- 2. No Jump Cooldown (One-time patch)
+                if Settings.noJumpCooldown then
+                    if rawget(v, "JUMP_DELAY_ADD") then 
+                        v.JUMP_DELAY_ADD = 0.08 
                     end
-                    
-                    -- Spawn aggressive loop for THIS specific table
-                    task.spawn(function()
-                        while Settings.infiniteStamina do
-                            v._stamina = math.huge
-                            if v._staminaChangedSignal then 
-                                v._staminaChangedSignal:Fire(100) 
-                            end
-                            task.wait()
-                        end
-                    end)
                 end
-            end
-            
-            -- 2. No Jump Cooldown (Stealth - Reduced Delay)
-            if Settings.noJumpCooldown then
-                -- Do NOT hook getCanJump (High Detection Risk)
-                -- Instead, reduce the cooldown to a "Legit Fast" value (0.08s)
-                -- 0.0s is flagged as "Impossible", 0.08s is just "Good Timing"
-                if rawget(v, "JUMP_DELAY_ADD") then 
-                    v.JUMP_DELAY_ADD = 0.08 
-                end
-            end
 
-            -- 3. No Dash Cooldown (Stealth Hook)
-            if Settings.noDashCooldown then
-                if rawget(v, "getDashCooldown") then 
-                    v.getDashCooldown = function() return 0 end 
+                -- 3. No Dash Cooldown (One-time patch)
+                if Settings.noDashCooldown then
+                    if rawget(v, "getDashCooldown") then 
+                        v.getDashCooldown = function() return 0 end 
+                    end
+                    if rawget(v, "DASH_COOLDOWN") then
+                        v.DASH_COOLDOWN = 0.1
+                    end
                 end
-                -- Don't set DASH_COOLDOWN constant to 0, just hook the getter
             end
         end
-    end
+        advancedMiscPatched = true
+        print("[Hell Hub] ✅ Advanced misc patched (one-time, no loops)")
+    end)
 end
 
--- Re-scan on respawn
+-- Run once on character spawn (NOT a constant loop!)
 LocalPlayer.CharacterAdded:Connect(function()
-    task.wait(1)
-    if Settings.infiniteStamina or Settings.noJumpCooldown or Settings.noDashCooldown then
+    task.wait(2)
+    if Settings.noJumpCooldown or Settings.noDashCooldown then
+        advancedMiscPatched = false -- Allow re-patch on respawn
         task.spawn(updateAdvancedMisc)
     end
 end)
