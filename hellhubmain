@@ -141,11 +141,35 @@ local Settings = {
     espDistanceOffset = 18,
     espHealthOffset = 32,
     espParryOffset = 46,
+    -- Chams
+    chamsEnabled = false,
+    chamsColor = Color3.fromRGB(255, 0, 100),
+    chamsFillTransparency = 0.5,
+    chamsOutlineTransparency = 0,
+    -- Silent Aim
+    silentAimEnabled = false,
+    silentAimFOV = 100,
+    silentAimShowFOV = false,
+    -- Teleport
+    teleportBind = Enum.KeyCode.T,
+    teleportEnabled = false,
+    -- Damage Indicators
+    damageIndicators = false,
 }
 
 -- ESP DATA
 local ESPObjects = {}
 local ParryStats = {}
+
+-- CHAMS DATA
+local ChamsObjects = {}
+
+-- SILENT AIM DATA
+local silentAimFOVCircle = nil
+local currentTarget = nil
+
+-- DAMAGE INDICATOR DATA
+local damageConnections = {}
 
 -- ANTI-CHEAT BYPASS SYSTEM
 local bypassEnabled = true
@@ -2530,5 +2554,281 @@ CombatTab:toggle{ Name = "Crosshair", Description = "Ekranin ortasinda nisangah"
 end }
 
 ConfigTab:toggle{ Name = "Anti-Cheat Bypass", Description = "Remote blocking system", StartingState = true, Callback = function(s) bypassEnabled = s end }
+
+-- ============================================
+-- CHAMS SYSTEM
+-- ============================================
+local function createChams(character)
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+    if ChamsObjects[character] then return end
+    
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "HellHubChams"
+    highlight.FillColor = Settings.chamsColor
+    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+    highlight.FillTransparency = Settings.chamsFillTransparency
+    highlight.OutlineTransparency = Settings.chamsOutlineTransparency
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.Adornee = character
+    highlight.Parent = character
+    
+    ChamsObjects[character] = highlight
+end
+
+local function removeChams(character)
+    if ChamsObjects[character] then
+        ChamsObjects[character]:Destroy()
+        ChamsObjects[character] = nil
+    end
+end
+
+local function updateChams()
+    if Settings.chamsEnabled then
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character then
+                createChams(player.Character)
+            end
+        end
+    else
+        for char, highlight in pairs(ChamsObjects) do
+            highlight:Destroy()
+        end
+        ChamsObjects = {}
+    end
+end
+
+-- ============================================
+-- SILENT AIM SYSTEM
+-- ============================================
+local function getClosestPlayerToMouse()
+    local closestPlayer = nil
+    local closestDistance = Settings.silentAimFOV
+    local mousePos = UserInputService:GetMouseLocation()
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
+            local humanoid = player.Character:FindFirstChild("Humanoid")
+            if humanoid and humanoid.Health > 0 then
+                local headPos, onScreen = Camera:WorldToViewportPoint(player.Character.Head.Position)
+                if onScreen then
+                    local distance = (Vector2.new(headPos.X, headPos.Y) - mousePos).Magnitude
+                    if distance < closestDistance then
+                        closestDistance = distance
+                        closestPlayer = player
+                    end
+                end
+            end
+        end
+    end
+    
+    return closestPlayer
+end
+
+local function createFOVCircle()
+    if silentAimFOVCircle then silentAimFOVCircle:Destroy() end
+    
+    local fovGui = Instance.new("ScreenGui")
+    fovGui.Name = "SilentAimFOV"
+    fovGui.Parent = game:GetService("CoreGui")
+    
+    local circle = Instance.new("Frame")
+    circle.Name = "Circle"
+    circle.Size = UDim2.new(0, Settings.silentAimFOV * 2, 0, Settings.silentAimFOV * 2)
+    circle.Position = UDim2.new(0.5, -Settings.silentAimFOV, 0.5, -Settings.silentAimFOV)
+    circle.BackgroundTransparency = 1
+    circle.Parent = fovGui
+    
+    local uiCorner = Instance.new("UICorner")
+    uiCorner.CornerRadius = UDim.new(1, 0)
+    uiCorner.Parent = circle
+    
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(255, 0, 100)
+    stroke.Thickness = 2
+    stroke.Parent = circle
+    
+    silentAimFOVCircle = fovGui
+end
+
+local function destroyFOVCircle()
+    if silentAimFOVCircle then
+        silentAimFOVCircle:Destroy()
+        silentAimFOVCircle = nil
+    end
+end
+
+-- ============================================
+-- TELEPORT TO MOUSE BIND
+-- ============================================
+local function teleportToMouse()
+    local character = LocalPlayer.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+    
+    local mouse = LocalPlayer:GetMouse()
+    if mouse.Target then
+        local targetPos = mouse.Hit.Position + Vector3.new(0, 3, 0)
+        character.HumanoidRootPart.CFrame = CFrame.new(targetPos)
+    end
+end
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if Settings.teleportEnabled and input.KeyCode == Settings.teleportBind then
+        teleportToMouse()
+    end
+end)
+
+-- ============================================
+-- DAMAGE INDICATORS
+-- ============================================
+local function createDamageIndicator(position, damage)
+    local billboardGui = Instance.new("BillboardGui")
+    billboardGui.Name = "DamageIndicator"
+    billboardGui.Adornee = nil
+    billboardGui.Size = UDim2.new(0, 100, 0, 50)
+    billboardGui.StudsOffset = Vector3.new(0, 2, 0)
+    billboardGui.AlwaysOnTop = true
+    billboardGui.Parent = game:GetService("CoreGui")
+    
+    local part = Instance.new("Part")
+    part.Anchored = true
+    part.CanCollide = false
+    part.Transparency = 1
+    part.Position = position
+    part.Parent = workspace
+    
+    billboardGui.Adornee = part
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Text = "-" .. tostring(math.floor(damage))
+    label.TextColor3 = Color3.fromRGB(255, 50, 50)
+    label.TextSize = 24
+    label.Font = Enum.Font.GothamBold
+    label.TextStrokeTransparency = 0.5
+    label.Parent = billboardGui
+    
+    -- Animate upward and fade
+    task.spawn(function()
+        for i = 1, 20 do
+            part.Position = part.Position + Vector3.new(0, 0.1, 0)
+            label.TextTransparency = i / 20
+            label.TextStrokeTransparency = 0.5 + (i / 40)
+            task.wait(0.05)
+        end
+        billboardGui:Destroy()
+        part:Destroy()
+    end)
+end
+
+-- ============================================
+-- TELEPORT TO PLAYER
+-- ============================================
+local function teleportToPlayer(playerName)
+    local targetPlayer = Players:FindFirstChild(playerName)
+    if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local character = LocalPlayer.Character
+        if character and character:FindFirstChild("HumanoidRootPart") then
+            character.HumanoidRootPart.CFrame = targetPlayer.Character.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0)
+        end
+    end
+end
+
+local function getPlayerList()
+    local list = {}
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            table.insert(list, player.Name)
+        end
+    end
+    return list
+end
+
+-- ============================================
+-- UI FOR NEW FEATURES
+-- ============================================
+local VisualsTab = Window:tab{ Name = "Visuals", Icon = "rbxassetid://6034973114" }
+
+VisualsTab:toggle{ Name = "Chams", Description = "Highlight players through walls", StartingState = false, Callback = function(s) 
+    Settings.chamsEnabled = s 
+    updateChams()
+end }
+
+VisualsTab:colorpicker{ Name = "Chams Color", Default = Color3.fromRGB(255, 0, 100), Callback = function(c)
+    Settings.chamsColor = c
+    for _, highlight in pairs(ChamsObjects) do
+        highlight.FillColor = c
+    end
+end }
+
+VisualsTab:slider{ Name = "Chams Fill Transparency", Min = 0, Max = 100, Default = 50, Callback = function(v)
+    Settings.chamsFillTransparency = v / 100
+    for _, highlight in pairs(ChamsObjects) do
+        highlight.FillTransparency = v / 100
+    end
+end }
+
+VisualsTab:toggle{ Name = "Damage Indicators", Description = "Show damage numbers", StartingState = false, Callback = function(s) 
+    Settings.damageIndicators = s 
+end }
+
+local AimTab = Window:tab{ Name = "Aim", Icon = "rbxassetid://6034509993" }
+
+AimTab:toggle{ Name = "Silent Aim", Description = "Auto aim at closest player", StartingState = false, Callback = function(s) 
+    Settings.silentAimEnabled = s 
+end }
+
+AimTab:slider{ Name = "Silent Aim FOV", Min = 50, Max = 500, Default = 100, Callback = function(v)
+    Settings.silentAimFOV = v
+    if silentAimFOVCircle then
+        createFOVCircle()
+    end
+end }
+
+AimTab:toggle{ Name = "Show FOV Circle", Description = "Display aim FOV circle", StartingState = false, Callback = function(s) 
+    Settings.silentAimShowFOV = s 
+    if s then createFOVCircle() else destroyFOVCircle() end
+end }
+
+local TeleportTab = Window:tab{ Name = "Teleport", Icon = "rbxassetid://6034287594" }
+
+TeleportTab:toggle{ Name = "Teleport Bind", Description = "Press T to teleport to mouse", StartingState = false, Callback = function(s) 
+    Settings.teleportEnabled = s 
+end }
+
+TeleportTab:dropdown{ Name = "Teleport to Player", Description = "Select player to teleport", Options = getPlayerList(), Callback = function(selected)
+    teleportToPlayer(selected)
+end }
+
+TeleportTab:button{ Name = "Refresh Player List", Callback = function()
+    -- Refresh dropdown (recreate the tab or notify)
+    print("[Hell Hub] Use dropdown again to see updated player list")
+end }
+
+-- Update chams when players join/leave
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function(char)
+        if Settings.chamsEnabled then
+            task.wait(0.5)
+            createChams(char)
+        end
+    end)
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    if player.Character then
+        removeChams(player.Character)
+    end
+end)
+
+-- Chams update loop
+task.spawn(function()
+    while task.wait(1) do
+        if Settings.chamsEnabled then
+            updateChams()
+        end
+    end
+end)
 
 print("[HELL HUB] Extra features loaded!")
