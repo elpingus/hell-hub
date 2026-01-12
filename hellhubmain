@@ -451,77 +451,138 @@ task.spawn(function()
 end)
 
 -- ═══════════════════════════════════════════════════════════════════
--- COMBAT WARRIORS BYPASS LOOPS
+-- COMBAT WARRIORS BYPASS SYSTEM (ONE-TIME HOOKS - NO SPAM!)
 -- ═══════════════════════════════════════════════════════════════════
 
--- Infinite Stamina Loop
+-- Stamina Hook (ONE TIME - No spam!)
 task.spawn(function()
-    while task.wait(0.1) do
-        if Settings.infiniteStamina then
-            pcall(function()
-                CWBypass:ApplyInfiniteStamina()
-            end)
-        end
-    end
-end)
-
--- Anti-Ragdoll & Anti-Knockback Loop
-task.spawn(function()
-    while task.wait(0.05) do
-        pcall(function()
-            local character = LocalPlayer.Character
-            if character then
-                local humanoid = character:FindFirstChildOfClass("Humanoid")
-                local rootPart = character:FindFirstChild("HumanoidRootPart")
-                
-                if Settings.antiRagdoll and humanoid then
-                    CWBypass:ApplyAntiRagdoll(humanoid)
-                end
-            end
-        end)
-    end
-end)
-
--- Speed/Jump Boost Application Loop
-task.spawn(function()
-    while task.wait(0.1) do
-        pcall(function()
-            local character = LocalPlayer.Character
-            if character then
-                local humanoid = character:FindFirstChildOfClass("Humanoid")
-                if humanoid then
-                    if Settings.speedBoost then
-                        -- Set actual speed but anti-cheat sees spoofed value
-                        rawset(humanoid, "WalkSpeed", Settings.customSpeed)
-                    end
-                    if Settings.jumpBoost then
-                        rawset(humanoid, "JumpPower", Settings.customJump)
-                    end
-                end
-            end
-        end)
-    end
-end)
-
--- Dash Cooldown Reset (hooks into dash system)
-task.spawn(function()
-    task.wait(3) -- Wait for game modules to load
+    task.wait(3) -- Wait for game to load
     pcall(function()
-        -- Try to find and hook the dash delay
-        local Delay2 = game:GetService("ReplicatedStorage"):FindFirstChild("Shared")
-        if Delay2 then
-            Delay2 = Delay2:FindFirstChild("Vendor")
-            if Delay2 then
-                Delay2 = Delay2:FindFirstChild("Delay2")
-                if Delay2 then
-                    local originalDelay2 = require(Delay2)
-                    -- Hook will be applied when dash is used
-                    print("[Hell Hub] Dash system located!")
+        local StaminaModule = game:GetService("ReplicatedStorage")
+            :FindFirstChild("Client")
+        if not StaminaModule then return end
+        StaminaModule = StaminaModule:FindFirstChild("Source")
+        if not StaminaModule then return end
+        StaminaModule = StaminaModule:FindFirstChild("DefaultStamina")
+        if not StaminaModule then return end
+        StaminaModule = StaminaModule:FindFirstChild("DefaultStaminaHandlerClient")
+        if not StaminaModule then return end
+        
+        local StaminaHandler = require(StaminaModule)
+        
+        -- Hook spendStamina ONE TIME
+        if StaminaHandler.spendStamina and not CWBypass.staminaHooked then
+            local originalSpend = StaminaHandler.spendStamina
+            StaminaHandler.spendStamina = function(amount)
+                if Settings.infiniteStamina then
+                    return -- Don't spend, NO SPAM
                 end
+                return originalSpend(amount)
+            end
+            CWBypass.staminaHooked = true
+            print("[Hell Hub] ✅ Stamina hook applied (one-time, no spam)")
+        end
+        
+        -- Hook getHasEnoughStamina ONE TIME
+        if StaminaHandler.getHasEnoughStamina and not CWBypass.staminaCheckHooked then
+            local originalCheck = StaminaHandler.getHasEnoughStamina
+            StaminaHandler.getHasEnoughStamina = function(required)
+                if Settings.infiniteStamina then
+                    return true -- Always enough
+                end
+                return originalCheck(required)
+            end
+            CWBypass.staminaCheckHooked = true
+            print("[Hell Hub] ✅ Stamina check hook applied")
+        end
+        
+        CWBypass.StaminaHandler = StaminaHandler
+    end)
+end)
+
+-- Anti-Ragdoll Hook (CHARACTER EVENT - Not loop!)
+local function setupAntiRagdoll(character)
+    if not character then return end
+    local humanoid = character:WaitForChild("Humanoid", 5)
+    if not humanoid then return end
+    
+    -- One-time state disable when character loads
+    if Settings.antiRagdoll then
+        pcall(function()
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+        end)
+    end
+    
+    -- Listen for state changes (event-based, not loop!)
+    humanoid.StateChanged:Connect(function(_, newState)
+        if Settings.antiRagdoll then
+            if newState == Enum.HumanoidStateType.Ragdoll or 
+               newState == Enum.HumanoidStateType.FallingDown then
+                pcall(function()
+                    humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+                end)
             end
         end
     end)
-end)
+end
+
+-- Speed/Jump Boost (CHARACTER EVENT - Not loop!)
+local function setupSpeedBoost(character)
+    if not character then return end
+    local humanoid = character:WaitForChild("Humanoid", 5)
+    if not humanoid then return end
+    
+    -- Apply once when character loads
+    local function applyBoosts()
+        if Settings.speedBoost and humanoid then
+            humanoid.WalkSpeed = Settings.customSpeed
+        end
+        if Settings.jumpBoost and humanoid then
+            humanoid.JumpPower = Settings.customJump
+        end
+    end
+    
+    applyBoosts()
+    
+    -- Re-apply when humanoid properties change (game resets them)
+    humanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
+        if Settings.speedBoost then
+            task.defer(function()
+                if humanoid.WalkSpeed ~= Settings.customSpeed then
+                    humanoid.WalkSpeed = Settings.customSpeed
+                end
+            end)
+        end
+    end)
+    
+    humanoid:GetPropertyChangedSignal("JumpPower"):Connect(function()
+        if Settings.jumpBoost then
+            task.defer(function()
+                if humanoid.JumpPower ~= Settings.customJump then
+                    humanoid.JumpPower = Settings.customJump
+                end
+            end)
+        end
+    end)
+end
+
+-- Character Setup (runs ONCE per character spawn)
+local function onCharacterAdded(character)
+    task.wait(0.5) -- Small wait for character to fully load
+    setupAntiRagdoll(character)
+    setupSpeedBoost(character)
+end
+
+-- Connect to character events (NOT A LOOP!)
+LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
+if LocalPlayer.Character then
+    task.spawn(function()
+        onCharacterAdded(LocalPlayer.Character)
+    end)
+end
+
+print("[Hell Hub] ✅ Bypass system loaded (event-based, no spam loops!)")
 
 -- LOAD HELL HUB LIBRARY
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/elpingus/hell-hub/refs/heads/main/hellhub.lua"))()
@@ -896,12 +957,13 @@ CombatTab:toggle{ Name = "No Parry Cooldown", Description = "Parry bekleme sures
 
 CombatTab:toggle{ 
     Name = "Infinite Stamina", 
-    Description = "Sinirsiz stamina (bypass aktif)", 
+    Description = "Stamina harcanmaz (⚠️ Dikkatli kullan)", 
     StartingState = false, 
     Callback = function(s) 
         Settings.infiniteStamina = s 
         if s then
-            print("[Hell Hub] Infinite Stamina ENABLED - Stamina will stay full!")
+            print("[Hell Hub] Infinite Stamina ENABLED (hook-based, no spam)")
+            warn("[Hell Hub] ⚠️ Server aksiyonları izleyebilir - dikkatli kullan!")
         end
     end 
 }
