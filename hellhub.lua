@@ -62,9 +62,54 @@ local Library = {
 			StrongText = Color3.fromHSV(0, 0, 1),        
 			WeakText = Color3.fromHSV(0, 0, 172/255)
 		},
-		Vaporwave = {},
-		OperaGX = {},
-		VisualStudio = {}
+		Vaporwave = {
+			Main = Color3.fromRGB(25, 20, 35),
+			Secondary = Color3.fromRGB(50, 40, 70),
+			Tertiary = Color3.fromRGB(255, 113, 206),
+
+			StrongText = Color3.fromRGB(255, 255, 255),
+			WeakText = Color3.fromRGB(180, 150, 200)
+		},
+		OperaGX = {
+			Main = Color3.fromRGB(20, 20, 25),
+			Secondary = Color3.fromRGB(40, 40, 50),
+			Tertiary = Color3.fromRGB(250, 30, 80),
+
+			StrongText = Color3.fromRGB(255, 255, 255),
+			WeakText = Color3.fromRGB(150, 150, 160)
+		},
+		VisualStudio = {
+			Main = Color3.fromRGB(30, 30, 30),
+			Secondary = Color3.fromRGB(45, 45, 48),
+			Tertiary = Color3.fromRGB(0, 122, 204),
+
+			StrongText = Color3.fromRGB(255, 255, 255),
+			WeakText = Color3.fromRGB(150, 150, 150)
+		},
+		Midnight = {
+			Main = Color3.fromRGB(15, 15, 25),
+			Secondary = Color3.fromRGB(30, 30, 50),
+			Tertiary = Color3.fromRGB(100, 100, 255),
+
+			StrongText = Color3.fromRGB(255, 255, 255),
+			WeakText = Color3.fromRGB(140, 140, 180)
+		},
+		Forest = {
+			Main = Color3.fromRGB(20, 30, 20),
+			Secondary = Color3.fromRGB(40, 55, 40),
+			Tertiary = Color3.fromRGB(80, 200, 80),
+
+			StrongText = Color3.fromRGB(255, 255, 255),
+			WeakText = Color3.fromRGB(150, 180, 150)
+		},
+		Sunset = {
+			Main = Color3.fromRGB(35, 25, 25),
+			Secondary = Color3.fromRGB(60, 45, 45),
+			Tertiary = Color3.fromRGB(255, 140, 50),
+
+			StrongText = Color3.fromRGB(255, 255, 255),
+			WeakText = Color3.fromRGB(200, 170, 150)
+		}
 	},
 	ColorPickerStyles = {
 		Legacy = 0,
@@ -536,6 +581,90 @@ function Library:create(options)
 
 	self.mainFrame = core
 
+	-- RESIZE HANDLES
+	local minWidth, minHeight = 400, 300
+	local maxWidth, maxHeight = 800, 600
+	
+	-- Bottom-right corner resize handle
+	local resizeHandle = Instance.new("TextButton")
+	resizeHandle.Name = "ResizeHandle"
+	resizeHandle.Size = UDim2.new(0, 20, 0, 20)
+	resizeHandle.Position = UDim2.new(1, -20, 1, -20)
+	resizeHandle.BackgroundTransparency = 1
+	resizeHandle.Text = "⤡"
+	resizeHandle.TextColor3 = Color3.fromRGB(150, 150, 150)
+	resizeHandle.TextSize = 16
+	resizeHandle.Font = Enum.Font.GothamBold
+	resizeHandle.ZIndex = 10
+	resizeHandle.Parent = core.AbsoluteObject
+	
+	-- Right edge resize
+	local resizeRight = Instance.new("TextButton")
+	resizeRight.Name = "ResizeRight"
+	resizeRight.Size = UDim2.new(0, 8, 1, -40)
+	resizeRight.Position = UDim2.new(1, -4, 0, 20)
+	resizeRight.BackgroundTransparency = 1
+	resizeRight.Text = ""
+	resizeRight.ZIndex = 10
+	resizeRight.Parent = core.AbsoluteObject
+	
+	-- Bottom edge resize
+	local resizeBottom = Instance.new("TextButton")
+	resizeBottom.Name = "ResizeBottom"
+	resizeBottom.Size = UDim2.new(1, -40, 0, 8)
+	resizeBottom.Position = UDim2.new(0, 20, 1, -4)
+	resizeBottom.BackgroundTransparency = 1
+	resizeBottom.Text = ""
+	resizeBottom.ZIndex = 10
+	resizeBottom.Parent = core.AbsoluteObject
+	
+	-- Resize functionality
+	local isResizing = false
+	local resizeType = nil
+	local startPos = nil
+	local startSize = nil
+	
+	local function startResize(input, rType)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			isResizing = true
+			resizeType = rType
+			startPos = Vector2.new(Mouse.X, Mouse.Y)
+			startSize = core.AbsoluteObject.Size
+		end
+	end
+	
+	resizeHandle.InputBegan:Connect(function(input) startResize(input, "corner") end)
+	resizeRight.InputBegan:Connect(function(input) startResize(input, "right") end)
+	resizeBottom.InputBegan:Connect(function(input) startResize(input, "bottom") end)
+	
+	UserInputService.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			isResizing = false
+		end
+	end)
+	
+	RunService.RenderStepped:Connect(function()
+		if isResizing then
+			local delta = Vector2.new(Mouse.X, Mouse.Y) - startPos
+			local newWidth = startSize.X.Offset
+			local newHeight = startSize.Y.Offset
+			
+			if resizeType == "corner" or resizeType == "right" then
+				newWidth = math.clamp(startSize.X.Offset + delta.X, minWidth, maxWidth)
+			end
+			if resizeType == "corner" or resizeType == "bottom" then
+				newHeight = math.clamp(startSize.Y.Offset + delta.Y, minHeight, maxHeight)
+			end
+			
+			core.AbsoluteObject.Size = UDim2.fromOffset(newWidth, newHeight)
+		end
+		
+		-- Update cursor
+		if resizeHandle.AbsoluteObject then
+			resizeHandle.Position = UDim2.new(1, -20, 1, -20)
+		end
+	end)
+
 	local tabButtons = core:object("ScrollingFrame", {
 		Size = UDim2.new(1, -40, 0, 25),
 		Position = UDim2.fromOffset(5, 5),
@@ -920,17 +1049,7 @@ function Library:create(options)
 		end,
 	}
 
-	settingsTab:slider{
-		Name = "UI Scale",
-		Description = "Adjust the UI size.",
-		Min = 50,
-		Max = 150,
-		Default = 100,
-		Callback = function(value)
-			local scale = value / 100
-			core.Size = UDim2.fromOffset(options.Size.X.Offset * scale, options.Size.Y.Offset * scale)
-		end,
-	}
+	-- UI Scale removed - use resize handles on window corners instead
 
 	settingsTab:button{
 		Name = "Reset All Settings",
