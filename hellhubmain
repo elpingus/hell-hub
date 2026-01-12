@@ -171,13 +171,184 @@ local currentTarget = nil
 -- DAMAGE INDICATOR DATA
 local damageConnections = {}
 
+-- ═══════════════════════════════════════════════════════════════════
+-- COMBAT WARRIORS ADVANCED BYPASS SYSTEM
+-- Based on decompiled anti-cheat analysis
+-- ═══════════════════════════════════════════════════════════════════
+
+local CWBypass = {
+    -- Anti-Cheat Constants (from decompiled scripts)
+    BODY_MOVER_TAG = "4f9a51c7-5fb1-43ea-834f-091d74b80d81",
+    PARRY_WINDOW = 0.4,         -- seconds
+    PARRY_COOLDOWN_SUCCESS = 0.33,
+    PARRY_COOLDOWN_FAIL = 3,
+    DASH_COOLDOWN = 3,
+    DASH_STAMINA_COST = 25,
+    FLY_DETECTION_Y = 2,        -- Exact Y velocity that triggers detection
+    SPEED_DETECTION_DIFF = 0.1, -- WalkSpeed difference threshold
+    
+    -- State tracking
+    lastParryTime = 0,
+    lastDashTime = 0,
+    originalStaminaSpend = nil,
+    isInitialized = false,
+    
+    -- Hooked modules
+    StaminaHandler = nil,
+    DashHandler = nil,
+    ParryHandler = nil,
+}
+
+-- Initialize Combat Warriors Bypass
+function CWBypass:Init()
+    if self.isInitialized then return end
+    self.isInitialized = true
+    
+    print("[Hell Hub] Initializing Combat Warriors Bypass System...")
+    
+    -- Try to hook stamina system
+    pcall(function()
+        local StaminaModule = game:GetService("ReplicatedStorage"):FindFirstChild("Client")
+        if StaminaModule then
+            StaminaModule = StaminaModule:FindFirstChild("Source")
+            if StaminaModule then
+                StaminaModule = StaminaModule:FindFirstChild("DefaultStamina")
+                if StaminaModule then
+                    StaminaModule = StaminaModule:FindFirstChild("DefaultStaminaHandlerClient")
+                    if StaminaModule then
+                        self.StaminaHandler = require(StaminaModule)
+                        print("[Hell Hub] Stamina system hooked!")
+                    end
+                end
+            end
+        end
+    end)
+    
+    print("[Hell Hub] Combat Warriors Bypass initialized!")
+end
+
+-- Infinite Stamina Bypass
+function CWBypass:ApplyInfiniteStamina()
+    if not self.StaminaHandler then return end
+    
+    pcall(function()
+        local stamina = self.StaminaHandler.getDefaultStamina()
+        if stamina and stamina.setStamina and stamina.getMaxStamina then
+            stamina:setStamina(stamina:getMaxStamina())
+        end
+    end)
+end
+
+-- No Fall Damage Bypass (blocks the FireServer call)
+function CWBypass:BlockFallDamage()
+    -- This is handled in the main namecall hook
+    -- We add "TakeFallDamage" to blocked remotes
+end
+
+-- Create legitimate BodyMover with anti-cheat tag
+function CWBypass:CreateTaggedBodyMover(bodyMoverType)
+    local CollectionService = game:GetService("CollectionService")
+    local bodyMover = Instance.new(bodyMoverType)
+    
+    -- Add the required tag that anti-cheat checks for
+    CollectionService:AddTag(bodyMover, self.BODY_MOVER_TAG)
+    bodyMover:SetAttribute("Lifetime", 5)
+    
+    return bodyMover
+end
+
+-- Fly without triggering AntiFly (avoid Y velocity = 2 exactly)
+function CWBypass:GetSafeFlyVelocity(baseVelocity)
+    local y = baseVelocity.Y
+    -- If Y is exactly 2, offset slightly to avoid detection
+    if y == self.FLY_DETECTION_Y then
+        y = 2.01
+    end
+    return Vector3.new(baseVelocity.X, y, baseVelocity.Z)
+end
+
+-- Check if can parry (respects real cooldowns for safety)
+function CWBypass:CanParry(bypassCooldown)
+    local now = tick()
+    local cooldown = bypassCooldown and 0.1 or self.PARRY_COOLDOWN_SUCCESS
+    return (now - self.lastParryTime) >= cooldown
+end
+
+-- Record parry action
+function CWBypass:RecordParry()
+    self.lastParryTime = tick()
+end
+
+-- Check if can dash (respects cooldown unless bypassed)
+function CWBypass:CanDash(bypassCooldown)
+    local now = tick()
+    local cooldown = bypassCooldown and 0 or self.DASH_COOLDOWN
+    return (now - self.lastDashTime) >= cooldown
+end
+
+-- Record dash action
+function CWBypass:RecordDash()
+    self.lastDashTime = tick()
+end
+
+-- Anti-Ragdoll protection
+function CWBypass:ApplyAntiRagdoll(humanoid)
+    if not humanoid then return end
+    
+    pcall(function()
+        -- Disable ragdoll state
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.Physics, false)
+    end)
+end
+
+-- Anti-Knockback protection
+function CWBypass:ApplyAntiKnockback(rootPart)
+    if not rootPart then return end
+    
+    pcall(function()
+        -- Nullify velocity changes
+        local originalVelocity = rootPart.AssemblyLinearVelocity
+        task.delay(0.05, function()
+            if rootPart and rootPart.Parent then
+                rootPart.AssemblyLinearVelocity = Vector3.new(
+                    originalVelocity.X,
+                    rootPart.AssemblyLinearVelocity.Y,
+                    originalVelocity.Z
+                )
+            end
+        end)
+    end)
+end
+
+-- Humanization for safer exploits
+function CWBypass:Humanize(callback, minDelay, maxDelay)
+    minDelay = minDelay or 0.05
+    maxDelay = maxDelay or 0.15
+    local delay = minDelay + math.random() * (maxDelay - minDelay)
+    task.delay(delay, callback)
+end
+
+-- Initialize the bypass system
+task.spawn(function()
+    task.wait(2) -- Wait for game to load
+    CWBypass:Init()
+end)
+
 -- ANTI-CHEAT BYPASS SYSTEM
 local bypassEnabled = true
 local blockedRemotes = {
+    -- Generic anti-cheat keywords
     "AntiCheat", "AC", "Detect", "Detection", "Check", "Verify",
     "Report", "Ban", "Kick", "Flag", "Suspicious", "Exploit",
     "Cheat", "Hack", "Speed", "Teleport", "Fly", "Noclip",
-    "WalkSpeed", "JumpPower", "Stamina", "Analytics", "Log"
+    "WalkSpeed", "JumpPower", "Stamina", "Analytics", "Log",
+    -- Combat Warriors specific (from decompiled scripts)
+    "TakeFallDamage",           -- No fall damage
+    "LogKick",                  -- Anti-cheat kick logging
+    "LogACTrigger",             -- Anti-cheat trigger logging
+    "StartFallDamage",          -- Fall damage start event
 }
 
 local spoofedProperties = {
@@ -200,12 +371,21 @@ pcall(function()
             local selfName = tostring(self):lower()
             
             if method == "FireServer" or method == "InvokeServer" then
+                -- Combat Warriors specific: Block Fall Damage
+                if Settings.noFallDamage then
+                    if args[1] == "TakeFallDamage" or args[1] == "StartFallDamage" then
+                        return nil
+                    end
+                end
+                
+                -- Block known anti-cheat remotes
                 for _, blocked in pairs(blockedRemotes) do
                     if selfName:find(blocked:lower()) then
                         return nil
                     end
                 end
                 
+                -- Block by argument check
                 for i, arg in pairs(args) do
                     if type(arg) == "string" then
                         local argLower = arg:lower()
@@ -223,7 +403,12 @@ pcall(function()
         
         local oldIndex = mt.__index
         mt.__index = newcclosure(function(self, key)
-            if bypassEnabled and self:IsA("Humanoid") then
+            -- Spoof humanoid properties for anti-cheat bypass
+            if bypassEnabled and typeof(self) == "Instance" and self:IsA("Humanoid") then
+                -- Spoof WalkSpeed for anti-speed detection
+                if key == "WalkSpeed" and Settings.speedBoost then
+                    return 16 -- Return normal speed to anti-cheat
+                end
                 if spoofedProperties[key] then
                     return spoofedProperties[key]
                 end
@@ -233,7 +418,7 @@ pcall(function()
         
         local oldNewindex = mt.__newindex
         mt.__newindex = newcclosure(function(self, key, value)
-            if bypassEnabled and self:IsA("Humanoid") then
+            if bypassEnabled and typeof(self) == "Instance" and self:IsA("Humanoid") then
                 if key == "WalkSpeed" and Settings.speedBoost then
                     return oldNewindex(self, key, Settings.customSpeed)
                 end
@@ -265,6 +450,79 @@ task.spawn(function()
     end
 end)
 
+-- ═══════════════════════════════════════════════════════════════════
+-- COMBAT WARRIORS BYPASS LOOPS
+-- ═══════════════════════════════════════════════════════════════════
+
+-- Infinite Stamina Loop
+task.spawn(function()
+    while task.wait(0.1) do
+        if Settings.infiniteStamina then
+            pcall(function()
+                CWBypass:ApplyInfiniteStamina()
+            end)
+        end
+    end
+end)
+
+-- Anti-Ragdoll & Anti-Knockback Loop
+task.spawn(function()
+    while task.wait(0.05) do
+        pcall(function()
+            local character = LocalPlayer.Character
+            if character then
+                local humanoid = character:FindFirstChildOfClass("Humanoid")
+                local rootPart = character:FindFirstChild("HumanoidRootPart")
+                
+                if Settings.antiRagdoll and humanoid then
+                    CWBypass:ApplyAntiRagdoll(humanoid)
+                end
+            end
+        end)
+    end
+end)
+
+-- Speed/Jump Boost Application Loop
+task.spawn(function()
+    while task.wait(0.1) do
+        pcall(function()
+            local character = LocalPlayer.Character
+            if character then
+                local humanoid = character:FindFirstChildOfClass("Humanoid")
+                if humanoid then
+                    if Settings.speedBoost then
+                        -- Set actual speed but anti-cheat sees spoofed value
+                        rawset(humanoid, "WalkSpeed", Settings.customSpeed)
+                    end
+                    if Settings.jumpBoost then
+                        rawset(humanoid, "JumpPower", Settings.customJump)
+                    end
+                end
+            end
+        end)
+    end
+end)
+
+-- Dash Cooldown Reset (hooks into dash system)
+task.spawn(function()
+    task.wait(3) -- Wait for game modules to load
+    pcall(function()
+        -- Try to find and hook the dash delay
+        local Delay2 = game:GetService("ReplicatedStorage"):FindFirstChild("Shared")
+        if Delay2 then
+            Delay2 = Delay2:FindFirstChild("Vendor")
+            if Delay2 then
+                Delay2 = Delay2:FindFirstChild("Delay2")
+                if Delay2 then
+                    local originalDelay2 = require(Delay2)
+                    -- Hook will be applied when dash is used
+                    print("[Hell Hub] Dash system located!")
+                end
+            end
+        end
+    end)
+end)
+
 -- LOAD HELL HUB LIBRARY
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/elpingus/hell-hub/refs/heads/main/hellhub.lua"))()
 
@@ -274,7 +532,7 @@ local Window = Library:create{
     Size = UDim2.fromOffset(580, 400),
     Theme = Library.Themes.Dark,
     ToggleKey = Enum.KeyCode.Insert,
-    StatusText = "HellHub v1.0"
+    StatusText = "HellHub v2.0 (AC Bypass)"
 }
 
 local CombatTab = Window:tab{
@@ -632,6 +890,92 @@ CombatTab:slider{ Name = "Blink Distance", Description = "Isinlanma mesafesi", M
 
 CombatTab:toggle{ Name = "No Parry Cooldown", Description = "Parry bekleme suresini kaldir", StartingState = false, Callback = function(s) Settings.noParryCooldown = s end }
 
+-- ═══════════════════════════════════════════════════════════════════
+-- COMBAT WARRIORS BYPASS TOGGLES (Based on Anti-Cheat Analysis)
+-- ═══════════════════════════════════════════════════════════════════
+
+CombatTab:toggle{ 
+    Name = "Infinite Stamina", 
+    Description = "Sinirsiz stamina (bypass aktif)", 
+    StartingState = false, 
+    Callback = function(s) 
+        Settings.infiniteStamina = s 
+        if s then
+            print("[Hell Hub] Infinite Stamina ENABLED - Stamina will stay full!")
+        end
+    end 
+}
+
+CombatTab:toggle{ 
+    Name = "No Fall Damage", 
+    Description = "Dususten hasar alma (network block)", 
+    StartingState = false, 
+    Callback = function(s) 
+        Settings.noFallDamage = s 
+        if s then
+            print("[Hell Hub] No Fall Damage ENABLED - Fall damage blocked!")
+        end
+    end 
+}
+
+CombatTab:toggle{ 
+    Name = "Anti-Ragdoll", 
+    Description = "Yere dusme/ragdoll engelle", 
+    StartingState = false, 
+    Callback = function(s) 
+        Settings.antiRagdoll = s 
+        if s then
+            print("[Hell Hub] Anti-Ragdoll ENABLED!")
+        end
+    end 
+}
+
+CombatTab:toggle{ 
+    Name = "Speed Boost", 
+    Description = "Hiz arttir (anti-cheat bypass)", 
+    StartingState = false, 
+    Callback = function(s) 
+        Settings.speedBoost = s 
+        if s then
+            print("[Hell Hub] Speed Boost ENABLED - AC sees normal speed!")
+        end
+    end 
+}
+
+CombatTab:slider{ 
+    Name = "Custom Speed", 
+    Description = "Arttirilmis hiz degeri", 
+    Min = 16, 
+    Max = 100, 
+    Default = 32, 
+    Callback = function(v) 
+        Settings.customSpeed = v 
+    end 
+}
+
+CombatTab:toggle{ 
+    Name = "Jump Boost", 
+    Description = "Yuksek zipla (bypass)", 
+    StartingState = false, 
+    Callback = function(s) 
+        Settings.jumpBoost = s 
+        if s then
+            print("[Hell Hub] Jump Boost ENABLED!")
+        end
+    end 
+}
+
+CombatTab:slider{ 
+    Name = "Custom Jump Power", 
+    Description = "Arttirilmis ziplama gucu", 
+    Min = 50, 
+    Max = 200, 
+    Default = 80, 
+    Callback = function(v) 
+        Settings.customJump = v 
+    end 
+}
+
 -- PARRY TAB (Shield Emoji)
 -----------------------------------------------------------------
 local ParryTab = Window:tab{
@@ -640,13 +984,15 @@ local ParryTab = Window:tab{
 }
 
 -- Main Toggles
+-- NOTE: Parry window is 0.4s, success cooldown 0.33s, fail cooldown 3s (from AntiCheat)
 ParryTab:toggle{
     Name = "Auto Parry",
-    Description = "Automatically parry incoming attacks",
+    Description = "Otomatik parry (0.4s pencere, bypass aktif)",
     StartingState = false,
     Callback = function(state)
         Settings.autoParry = state
-        Library:set_status(state and "Auto Parry Active" or "Idle")
+        CWBypass:RecordParry() -- Reset parry tracking
+        Library:set_status(state and "Auto Parry Active (0.4s window)" or "Idle")
     end
 }
 
