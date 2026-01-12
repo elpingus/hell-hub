@@ -273,12 +273,13 @@ local Window = Library:create{
     Name = "Hell Hub - Combat Warriors",
     Size = UDim2.fromOffset(580, 400),
     Theme = Library.Themes.Dark,
-    ToggleKey = Enum.KeyCode.Insert
+    ToggleKey = Enum.KeyCode.Insert,
+    StatusText = "HellHub v1.0"
 }
 
 local CombatTab = Window:tab{
     Name = "Combat",
-    Icon = "rbxassetid://6034287594"
+    Icon = "rbxassetid://6031068420"
 }
 
 local hitboxEnabled = false
@@ -762,14 +763,14 @@ ParrySettings:slider{
 }
 
 -----------------------------------------------------------------
--- ESP TAB
+-- VISUALS TAB (ESP + CHAMS)
 -----------------------------------------------------------------
-local ESPTab = Window:tab{
-    Name = "ESP",
-    Icon = "rbxassetid://8594150191"
+local VisualsTab = Window:tab{
+    Name = "Visuals",
+    Icon = "rbxassetid://6034509993"
 }
 
-ESPTab:toggle{
+VisualsTab:toggle{
     Name = "ESP Enabled",
     Description = "Enable player ESP",
     StartingState = false,
@@ -787,7 +788,7 @@ ESPTab:toggle{
 }
 
 -- ESP Elements Section
-local ESPElements = ESPTab:section{
+local ESPElements = VisualsTab:section{
     Name = "ESP Elements"
 }
 
@@ -828,7 +829,7 @@ ESPElements:toggle{
 }
 
 -- ESP Colors Section
-local ESPColors = ESPTab:section{
+local ESPColors = VisualsTab:section{
     Name = "ESP Colors"
 }
 
@@ -885,7 +886,7 @@ ESPColors:color_picker{
 }
 
 -- ESP Size Section
-local ESPSize = ESPTab:section{
+local ESPSize = VisualsTab:section{
     Name = "ESP Size"
 }
 
@@ -933,7 +934,7 @@ espWindow:Hide()
 
 -- Show/Hide window when ESP is toggled (update the ESP Enabled toggle callback)
 local originalEspCallback = Settings.espEnabled
-ESPTab:button{
+VisualsTab:button{
     Name = "Open ESP Preview",
     Description = "Open floating ESP layout editor",
     Callback = function()
@@ -946,7 +947,7 @@ ESPTab:button{
 -----------------------------------------------------------------
 local MiscTab = Window:tab{
     Name = "Misc",
-    Icon = "rbxassetid://8569329416"
+    Icon = "rbxassetid://6031280882"
 }
 
 -- Global Stamina Controller Reference
@@ -1280,37 +1281,8 @@ PlayerTab:button{
 }
 
 -----------------------------------------------------------------
--- INFO TAB
+-- ESP SYSTEM (Info tab removed - version shown in main window)
 -----------------------------------------------------------------
-local InfoTab = Window:tab{
-    Name = "Info",
-    Icon = "rbxassetid://8628681683"
-}
-
-InfoTab:label{
-    Text = "Hell Hub",
-    Description = "Combat Warriors Edition v1.0"
-}
-
-InfoTab:label{
-    Text = "Player",
-    Description = LocalPlayer.Name
-}
-
-local statusLabel = InfoTab:label{
-    Text = "Auto Parry Status",
-    Description = "OFF"
-}
-
-local parryCountLabel = InfoTab:label{
-    Text = "Total Parries",
-    Description = "0"
-}
-
-local comboCountLabel = InfoTab:label{
-    Text = "Current Combo",
-    Description = "0"
-}
 
 -----------------------------------------------------------------
 -- ESP SYSTEM
@@ -2746,10 +2718,8 @@ local function getPlayerList()
 end
 
 -- ============================================
--- UI FOR NEW FEATURES
+-- ADD CHAMS TO VISUALS TAB (already defined above as renamed ESP tab)
 -- ============================================
-local VisualsTab = Window:tab{ Name = "Visuals", Icon = "rbxassetid://6034973114" }
-
 VisualsTab:toggle{ Name = "Chams", Description = "Highlight players through walls", StartingState = false, Callback = function(s) 
     Settings.chamsEnabled = s 
     updateChams()
@@ -2773,36 +2743,43 @@ VisualsTab:toggle{ Name = "Damage Indicators", Description = "Show damage number
     Settings.damageIndicators = s 
 end }
 
-local AimTab = Window:tab{ Name = "Aim", Icon = "rbxassetid://6034509993" }
-
-AimTab:toggle{ Name = "Silent Aim", Description = "Auto aim at closest player", StartingState = false, Callback = function(s) 
+-- ============================================
+-- ADD SILENT AIM TO COMBAT TAB
+-- ============================================
+CombatTab:toggle{ Name = "Silent Aim", Description = "Auto aim at closest player", StartingState = false, Callback = function(s) 
     Settings.silentAimEnabled = s 
 end }
 
-AimTab:slider{ Name = "Silent Aim FOV", Min = 50, Max = 500, Default = 100, Callback = function(v)
+CombatTab:slider{ Name = "Silent Aim FOV", Min = 50, Max = 500, Default = 100, Callback = function(v)
     Settings.silentAimFOV = v
     if silentAimFOVCircle then
         createFOVCircle()
     end
 end }
 
-AimTab:toggle{ Name = "Show FOV Circle", Description = "Display aim FOV circle", StartingState = false, Callback = function(s) 
+CombatTab:toggle{ Name = "Show FOV Circle", Description = "Display aim FOV circle", StartingState = false, Callback = function(s) 
     Settings.silentAimShowFOV = s 
     if s then createFOVCircle() else destroyFOVCircle() end
 end }
 
-local TeleportTab = Window:tab{ Name = "Teleport", Icon = "rbxassetid://6034287594" }
-
-TeleportTab:toggle{ Name = "Teleport Bind", Description = "Press T to teleport to mouse", StartingState = false, Callback = function(s) 
+-- ============================================
+-- TELEPORT FEATURES (Added to Misc Tab)
+-- ============================================
+MiscTab:toggle{ Name = "Teleport Bind", Description = "Press T to teleport to mouse", StartingState = false, Callback = function(s) 
     Settings.teleportEnabled = s 
 end }
 
-TeleportTab:dropdown{ Name = "Teleport to Player", Description = "Select player to teleport", Options = getPlayerList(), Callback = function(selected)
+MiscTab:dropdown{ Name = "Teleport Key", Description = "Change teleport keybind", Options = {"T", "V", "B", "G", "H", "J"}, Callback = function(selected)
+    local keyMap = {T = Enum.KeyCode.T, V = Enum.KeyCode.V, B = Enum.KeyCode.B, G = Enum.KeyCode.G, H = Enum.KeyCode.H, J = Enum.KeyCode.J}
+    Settings.teleportBind = keyMap[selected]
+    print("[Hell Hub] Teleport key set to: " .. selected)
+end }
+
+MiscTab:dropdown{ Name = "Teleport to Player", Description = "Select player to teleport", Options = getPlayerList(), Callback = function(selected)
     teleportToPlayer(selected)
 end }
 
-TeleportTab:button{ Name = "Refresh Player List", Callback = function()
-    -- Refresh dropdown (recreate the tab or notify)
+MiscTab:button{ Name = "Refresh Player List", Callback = function()
     print("[Hell Hub] Use dropdown again to see updated player list")
 end }
 
